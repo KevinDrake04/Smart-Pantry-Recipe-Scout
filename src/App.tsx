@@ -8,6 +8,7 @@ import {
   generateRecipeSuggestions,
   type RecipeSuggestion,
 } from './services/recipeGenerator'
+import { generateWasteTips, type WasteTip } from './services/wasteTips'
 import './App.css'
 
 function App() {
@@ -19,12 +20,14 @@ function App() {
   const [recipeSuggestions, setRecipeSuggestions] = useState<RecipeSuggestion[]>(
     []
   )
+  const [wasteTips, setWasteTips] = useState<WasteTip[]>([])
 
   const handleSubmit = () => {
     const parsed = parseIngredients(ingredientText)
     setSubmittedIngredients(ingredientText)
     setParsedIngredients(parsed)
     setRecipeSuggestions(generateRecipeSuggestions(parsed))
+    setWasteTips(generateWasteTips(parsed))
   }
 
   return (
@@ -122,9 +125,25 @@ function App() {
 
         <article className="placeholder-card">
           <h2>Waste Reduction Tips</h2>
-          <p>
-            Placeholder for food-saving guidance based on available ingredients.
-          </p>
+          {submittedIngredients.trim() === '' ? (
+            <p>Submit ingredients to get practical food waste reduction tips.</p>
+          ) : wasteTips.length === 0 ? (
+            <p>No tips yet. Add ingredients to get spoilage-aware suggestions.</p>
+          ) : (
+            <ul className="tips-list">
+              {wasteTips.map((tip) => (
+                <li key={tip.title} className="tip-item">
+                  <p>
+                    <strong>{tip.title}</strong>{' '}
+                    <span className={`tip-priority ${tip.priority}`}>
+                      {tip.priority === 'high' ? 'use soon' : 'plan ahead'}
+                    </span>
+                  </p>
+                  <p>{tip.tip}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </article>
       </section>
     </main>
