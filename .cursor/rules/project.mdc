@@ -1,0 +1,66 @@
+---
+description: Project rules for Smart Pantry & Recipe Scout
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Smart Pantry & Recipe Scout Rules
+
+## Project Goal
+
+Build a React + TypeScript app that recommends recipes based on ingredients the user already has.
+
+The app must support:
+- ingredient text input
+- fuzzy or incomplete ingredient handling
+- recipe suggestions
+- missing ingredient display
+- food waste reduction tips
+- simulated image input using sample fridge ingredients
+
+## Tech Stack
+
+- React
+- TypeScript
+- Vite
+- Plain CSS
+- No backend for the MVP
+- Prefer local rule-based logic over external APIs for the first working version
+
+## Code Style
+
+- Use clear component names.
+- Keep components small.
+- Put reusable logic in `src/services`.
+- Put static sample recipe data in `src/data`.
+- Avoid overengineering.
+- Do not add authentication, databases, or deployment unless explicitly requested.
+
+## AI Usage Expectations
+
+When generating code:
+- Explain what files were changed.
+- Keep changes focused on the current feature branch.
+- Avoid rewriting unrelated files.
+- Include simple edge case handling.
+- Prefer readable code over clever code.
+
+## Testing Expectations
+
+After changes:
+- Make sure `npm run dev` works.
+- Make sure `npm run build` works before final submission.
+- Manually test at least these inputs:
+  - eggs, rice, spinach
+  - old spinach, leftover rice, eggg
+  - tomatos, pasta, cheese
+  - milk, bread, banana
+  - empty input
+
+## Documentation
+
+Maintain:
+- `README.md`
+- `docs/PROJECT_REPORT.md`
+- `docs/AI_USAGE_REPORT.md`
