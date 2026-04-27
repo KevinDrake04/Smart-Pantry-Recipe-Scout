@@ -1,73 +1,79 @@
-# React + TypeScript + Vite
+# Smart Pantry & Recipe Scout
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Smart Pantry & Recipe Scout is a frontend-only CS485 project that helps users
+turn available ingredients into practical meal ideas while reducing food waste.
+It uses local rule-based logic in the browser, with no backend and no external
+recipe API.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Ingredient text input (comma-separated ingredients)
+- Simulated fridge image input using sample ingredient sets
+- Fuzzy ingredient parsing and typo correction (for common misspellings)
+- Rule-based recipe recommendations from available ingredients
+- Match percentage and missing ingredient display
+- Substitution suggestions for common missing items
+- Food waste reduction tips based on urgency and ingredient category
+- Fully local logic (no server calls, no external AI/recipe APIs at runtime)
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React
+- TypeScript
+- Vite
+- Plain CSS
 
-## Expanding the ESLint configuration
+## Project Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+ (recommended)
+- npm 9+ (recommended)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Install Dependencies
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Run Locally
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Start development server
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+### Build for production
+
+```bash
+npm run build
+```
+
+### Preview production build (optional)
+
+```bash
+npm run preview
+```
+
+## Manual Test Inputs
+
+Use these sample inputs in the ingredient textarea to verify behavior:
+
+- `eggs, rice, spinach`
+- `old spinach, leftover rice, eggg`
+- `tomatos, pasta, cheese`
+- `milk, bread, banana`
+- empty input
+
+Also test simulated samples in the **Simulated Fridge Image Input** section:
+
+- Weeknight leftovers
+- Breakfast basics
+- Pasta night
+
+## Important Note About Simulated Image Input
+
+The simulated image input is **not real computer vision**. It uses pre-defined
+sample ingredient sets to imitate what a fridge/pantry image recognition feature
+might detect.
