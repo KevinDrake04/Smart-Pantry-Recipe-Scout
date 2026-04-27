@@ -106,6 +106,23 @@
   overflow-wrap: anywhere;
 }
 
+.parsed-results {
+  margin-top: 0.4rem;
+}
+
+.parsed-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.parsed-list li {
+  font-size: 0.9rem;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .placeholder-grid {
     grid-template-columns: 1fr;

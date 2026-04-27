@@ -1,13 +1,21 @@
 import { useState } from 'react'
 import IngredientInput from './components/IngredientInput'
+import {
+  parseIngredients,
+  type ParsedIngredient,
+} from './services/ingredientParser'
 import './App.css'
 
 function App() {
   const [ingredientText, setIngredientText] = useState('')
   const [submittedIngredients, setSubmittedIngredients] = useState('')
+  const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>(
+    []
+  )
 
   const handleSubmit = () => {
     setSubmittedIngredients(ingredientText)
+    setParsedIngredients(parseIngredients(ingredientText))
   }
 
   return (
@@ -32,6 +40,22 @@ function App() {
             <div className="ingredient-preview">
               <p className="preview-label">Temporary preview:</p>
               <p className="preview-text">{submittedIngredients}</p>
+              <div className="parsed-results">
+                <p className="preview-label">Parsed ingredients:</p>
+                {parsedIngredients.length === 0 ? (
+                  <p className="preview-text">No ingredients parsed.</p>
+                ) : (
+                  <ul className="parsed-list">
+                    {parsedIngredients.map((ingredient) => (
+                      <li key={ingredient.name}>
+                        <strong>{ingredient.name}</strong> - original:{' '}
+                        {ingredient.originalText}, category:{' '}
+                        {ingredient.category}, urgency: {ingredient.urgency}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </article>
