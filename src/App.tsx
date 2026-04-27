@@ -4,6 +4,10 @@ import {
   parseIngredients,
   type ParsedIngredient,
 } from './services/ingredientParser'
+import {
+  generateRecipeSuggestions,
+  type RecipeSuggestion,
+} from './services/recipeGenerator'
 import './App.css'
 
 function App() {
@@ -12,10 +16,15 @@ function App() {
   const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>(
     []
   )
+  const [recipeSuggestions, setRecipeSuggestions] = useState<RecipeSuggestion[]>(
+    []
+  )
 
   const handleSubmit = () => {
+    const parsed = parseIngredients(ingredientText)
     setSubmittedIngredients(ingredientText)
-    setParsedIngredients(parseIngredients(ingredientText))
+    setParsedIngredients(parsed)
+    setRecipeSuggestions(generateRecipeSuggestions(parsed))
   }
 
   return (
@@ -62,10 +71,53 @@ function App() {
 
         <article className="placeholder-card">
           <h2>Recipe Suggestions</h2>
-          <p>
-            Placeholder for recommended recipes, matched ingredients, and
-            missing items.
-          </p>
+          {submittedIngredients.trim() === '' ? (
+            <p>
+              Submit ingredients to see rule-based suggestions with used and
+              missing items.
+            </p>
+          ) : recipeSuggestions.length === 0 ? (
+            <p>No matching recipes found yet. Try different ingredients.</p>
+          ) : (
+            <ul className="recipe-list">
+              {recipeSuggestions.map((recipe) => (
+                <li key={recipe.title} className="recipe-item">
+                  <h3>{recipe.title}</h3>
+                  <p>
+                    <strong>Match:</strong> {recipe.matchPercentage}%
+                  </p>
+                  <p>{recipe.matchSummary}</p>
+                  <p>
+                    <strong>Used:</strong> {recipe.usedIngredients.join(', ')}
+                  </p>
+                  <p>
+                    <strong>Missing:</strong>{' '}
+                    {recipe.missingIngredients.length > 0
+                      ? recipe.missingIngredients.join(', ')
+                      : 'None'}
+                  </p>
+                  <p>
+                    <strong>Substitutions:</strong>{' '}
+                    {recipe.substitutions.length > 0
+                      ? recipe.substitutions.join(' | ')
+                      : 'None'}
+                  </p>
+                  <p>
+                    <strong>Why recommended:</strong> {recipe.whyRecommended}
+                  </p>
+                  <p>
+                    <strong>Estimated time:</strong> {recipe.estimatedTime}
+                  </p>
+                  <p>
+                    <strong>Difficulty:</strong> {recipe.difficulty}
+                  </p>
+                  <p>
+                    <strong>Steps:</strong> {recipe.steps.join(' ')}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </article>
 
         <article className="placeholder-card">
