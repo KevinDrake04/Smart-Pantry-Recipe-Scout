@@ -47,6 +47,65 @@
   font-size: 0.95rem;
 }
 
+.ingredient-input {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ingredient-label {
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+.ingredient-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.ingredient-helper {
+  font-size: 0.85rem;
+}
+
+.ingredient-submit {
+  justify-self: start;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  color: var(--accent);
+  background: var(--accent-bg);
+  cursor: pointer;
+}
+
+.ingredient-submit:hover {
+  border-color: var(--accent);
+}
+
+.ingredient-preview {
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.preview-label {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.preview-text {
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .placeholder-grid {
     grid-template-columns: 1fr;
