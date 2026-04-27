@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import IngredientInput from './components/IngredientInput'
+import SimulatedImageInput from './components/SimulatedImageInput'
 import {
   parseIngredients,
   type ParsedIngredient,
@@ -43,6 +44,10 @@ function App() {
       <section className="placeholder-grid" aria-label="Feature sections">
         <article className="placeholder-card">
           <h2>Ingredient Input</h2>
+          <SimulatedImageInput
+            onSelectIngredients={setIngredientText}
+            selectedIngredients={ingredientText}
+          />
           <IngredientInput
             value={ingredientText}
             onChange={setIngredientText}

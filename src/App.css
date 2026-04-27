@@ -52,6 +52,82 @@
   gap: 0.65rem;
 }
 
+.simulated-image-input {
+  margin-bottom: 0.85rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.simulated-heading {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-h);
+}
+
+.simulated-note {
+  font-size: 0.85rem;
+}
+
+.sample-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sample-option {
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.6rem 0.7rem;
+  cursor: pointer;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.sample-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sample-icon {
+  font-size: 1rem;
+}
+
+.sample-option:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.sample-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: 0 0 0 1px var(--accent-border) inset;
+}
+
+.sample-title {
+  font-size: 0.9rem;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.sample-ingredients {
+  font-size: 0.82rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.sample-cta {
+  justify-self: start;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  background: var(--accent-bg);
+}
+
 .ingredient-label {
   font-size: 0.9rem;
   color: var(--text-h);
