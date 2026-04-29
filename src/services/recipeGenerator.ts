@@ -2,6 +2,7 @@ import { sampleRecipes } from '../data/sampleRecipes'
 import {
   formatIngredientLabel,
   ingredientsById,
+  isLowRecipeMatchWeight,
 } from '../data/ingredientKnowledgeBase'
 import type { ParsedIngredient } from './ingredientParser'
 
@@ -18,17 +19,17 @@ export type RecipeSuggestion = {
   steps: string[]
 }
 
-const nonCriticalPantryStaples = new Set([
-  'salt',
-  'pepper',
-  'oil',
-  'water',
-  'butter',
-  'seasoning',
-  'honey',
-  'sesame seeds',
-  'spices',
-])
+/** Fallback staples only used when KB flag missing (legacy ids). */
+const legacyLowWeightIds = new Set(['water'])
+
+function isLowWeightId(id: string): boolean {
+  return isLowRecipeMatchWeight(id) || legacyLowWeightIds.has(id)
+}
+
+/** Primary ingredients for scoring (excludes pantry seasonings). */
+function meaningfulIds(ids: string[]): string[] {
+  return ids.filter((id) => !isLowWeightId(id))
+}
 
 const substitutionMap: Record<string, string> = {
   'soy sauce': 'salt + a small splash of vinegar',
@@ -50,7 +51,7 @@ const substitutionMap: Record<string, string> = {
   chicken: 'tofu, beans, or extra vegetables',
   tuna: 'chickpeas or white beans',
   potatoes: 'extra bread, rice, or pasta for bulk',
-  peppers: 'any firm vegetables you have, or frozen mix',
+  'bell-peppers': 'any firm vegetables you have, or frozen mix',
   carrots: 'celery, peppers, or another crunchy vegetable',
   noodles: 'pasta, rice, or thinly sliced vegetables',
   lettuce: 'cabbage, spinach, or any fresh greens',
@@ -79,14 +80,14 @@ function labelsForIds(ids: string[]): string[] {
 }
 
 function buildWhyRecommended(
-  usedIngredientIds: string[],
+  meaningfulUsedIds: string[],
   urgentIngredientIds: Set<string>
 ): string {
-  if (usedIngredientIds.length === 0) {
+  if (meaningfulUsedIds.length === 0) {
     return 'Recommended based on your ingredient categories and quick prep.'
   }
 
-  const highlighted = usedIngredientIds.map((id) =>
+  const highlighted = meaningfulUsedIds.map((id) =>
     urgentIngredientIds.has(id)
       ? `use-soon ${formatIngredientLabel(id)}`
       : formatIngredientLabel(id)
@@ -119,6 +120,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
               item.category === 'legume'
           )
           .map((item) => item.id)
+          .filter((id) => !isLowWeightId(id))
           .slice(0, 4)
       ),
       missingIngredients: [],
@@ -147,6 +149,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
               item.id === 'eggs' || item.category === 'vegetable' || item.id === 'spinach'
           )
           .map((item) => item.id)
+          .filter((id) => !isLowWeightId(id))
           .slice(0, 4)
       ),
       missingIngredients: [],
@@ -171,6 +174,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
         parsedIngredients
           .filter((item) => item.id === 'milk' || item.category === 'fruit')
           .map((item) => item.id)
+          .filter((id) => !isLowWeightId(id))
           .slice(0, 4)
       ),
       missingIngredients: [],
@@ -207,16 +211,88 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
 
 function isWeakMatch(
   matchPercentage: number,
-  usedCount: number,
-  criticalMissingCount: number,
-  totalMain: number
+  meaningfulUsedCount: number,
+  meaningfulMissingCount: number,
+  meaningfulTotal: number
 ): boolean {
-  if (totalMain <= 2) {
-    return matchPercentage < 50 && usedCount < totalMain
+  if (meaningfulTotal <= 1) {
+    return matchPercentage < 55 && meaningfulUsedCount < meaningfulTotal
   }
-  const lowCoverage = matchPercentage < 38 && usedCount <= 1
-  const tooManyGaps = criticalMissingCount >= 3 && matchPercentage < 55
+  const lowCoverage = matchPercentage < 35 && meaningfulUsedCount <= 1
+  const tooManyGaps = meaningfulMissingCount >= 2 && matchPercentage < 50
   return lowCoverage || tooManyGaps
+}
+
+type Scored = {
+  title: string
+  matchPercentage: number
+  matchSummary: string
+  usedIngredients: string[]
+  missingIngredients: string[]
+  substitutions: string[]
+  whyRecommended: string
+  estimatedTime: string
+  difficulty: string
+  steps: string[]
+  criticalMissingCount: number
+  urgentUsedCount: number
+  meaningfulTotalMain: number
+  meaningfulUsedCount: number
+}
+
+function scoreRecipe(
+  recipe: (typeof sampleRecipes)[0],
+  pantryIds: Set<string>,
+  urgentIngredientIds: Set<string>
+): Scored | null {
+  const mains = recipe.mainIngredients
+  const meaningfulMains = meaningfulIds(mains)
+
+  if (meaningfulMains.length === 0) {
+    return null
+  }
+
+  const usedIngredientIds = mains.filter((id) => pantryIds.has(id))
+  const meaningfulUsedIds = meaningfulIds(usedIngredientIds)
+
+  const missingIngredientIds = mains.filter((id) => !pantryIds.has(id))
+  const meaningfulMissingIds = meaningfulIds(missingIngredientIds)
+
+  const matchPercentage =
+    meaningfulMains.length > 0
+      ? Math.round((meaningfulUsedIds.length / meaningfulMains.length) * 100)
+      : 0
+
+  const criticalMissingCount = meaningfulMissingIds.length
+
+  const substitutions = meaningfulMissingIds
+    .map((id) => substitutionLineForMissing(id))
+    .filter((line): line is string => Boolean(line))
+
+  const urgentUsedCount = meaningfulUsedIds.filter((id) => urgentIngredientIds.has(id))
+    .length
+
+  const whyRecommended = buildWhyRecommended(meaningfulUsedIds, urgentIngredientIds)
+
+  return {
+    title: recipe.title,
+    matchPercentage,
+    matchSummary:
+      meaningfulMains.length > 0
+        ? `You matched ${meaningfulUsedIds.length} of ${meaningfulMains.length} main ingredients (pantry staples scored lightly).`
+        : `You have ${usedIngredientIds.length} of ${mains.length} listed ingredients.`,
+    usedIngredients: labelsForIds(usedIngredientIds),
+    missingIngredients: labelsForIds(meaningfulMissingIds),
+    substitutions,
+    whyRecommended,
+    estimatedTime: recipe.estimatedTime,
+    difficulty: recipe.difficulty,
+    steps: recipe.steps,
+    criticalMissingCount,
+    urgentUsedCount,
+    meaningfulTotalMain: meaningfulMains.length,
+    meaningfulUsedCount: meaningfulUsedIds.length,
+  }
 }
 
 export function generateRecipeSuggestions(
@@ -227,6 +303,12 @@ export function generateRecipeSuggestions(
   }
 
   const pantryIds = new Set(parsedIngredients.map((ingredient) => ingredient.id))
+  const meaningfulPantry = meaningfulIds([...pantryIds])
+
+  if (meaningfulPantry.length === 0) {
+    return []
+  }
+
   const urgentIngredientIds = new Set(
     parsedIngredients
       .filter((ingredient) => ingredient.urgency === 'use soon')
@@ -234,54 +316,24 @@ export function generateRecipeSuggestions(
   )
 
   const scoredRecipes = sampleRecipes
-    .map((recipe) => {
-      const mains = recipe.mainIngredients
-      const usedIngredientIds = mains.filter((id) => pantryIds.has(id))
-      const missingIngredientIds = mains.filter((id) => !pantryIds.has(id))
-      const criticalMissingCount = missingIngredientIds.filter(
-        (id) => !nonCriticalPantryStaples.has(id)
-      ).length
-      const totalMain = mains.length
-      const matchPercentage = Math.round((usedIngredientIds.length / totalMain) * 100)
-      const urgentUsedCount = usedIngredientIds.filter((id) =>
-        urgentIngredientIds.has(id)
-      ).length
-      const substitutions = missingIngredientIds
-        .map((id) => substitutionLineForMissing(id))
-        .filter((line): line is string => Boolean(line))
-
-      return {
-        title: recipe.title,
-        matchPercentage,
-        matchSummary: `You have ${usedIngredientIds.length} of ${totalMain} main ingredients.`,
-        usedIngredients: labelsForIds(usedIngredientIds),
-        missingIngredients: labelsForIds(missingIngredientIds),
-        substitutions,
-        whyRecommended: buildWhyRecommended(usedIngredientIds, urgentIngredientIds),
-        estimatedTime: recipe.estimatedTime,
-        difficulty: recipe.difficulty,
-        steps: recipe.steps,
-        criticalMissingCount,
-        urgentUsedCount,
-        totalMain,
-      }
-    })
-    .filter((recipe) => recipe.usedIngredients.length > 0)
+    .map((recipe) => scoreRecipe(recipe, pantryIds, urgentIngredientIds))
+    .filter((r): r is Scored => r !== null)
+    .filter((recipe) => recipe.meaningfulUsedCount > 0)
     .filter(
       (recipe) =>
         !isWeakMatch(
           recipe.matchPercentage,
-          recipe.usedIngredients.length,
+          recipe.meaningfulUsedCount,
           recipe.criticalMissingCount,
-          recipe.totalMain
+          recipe.meaningfulTotalMain
         )
     )
     .sort((a, b) => {
       if (a.criticalMissingCount !== b.criticalMissingCount) {
         return a.criticalMissingCount - b.criticalMissingCount
       }
-      if (a.usedIngredients.length !== b.usedIngredients.length) {
-        return b.usedIngredients.length - a.usedIngredients.length
+      if (a.meaningfulUsedCount !== b.meaningfulUsedCount) {
+        return b.meaningfulUsedCount - a.meaningfulUsedCount
       }
       if (b.urgentUsedCount !== a.urgentUsedCount) {
         return b.urgentUsedCount - a.urgentUsedCount
@@ -293,7 +345,8 @@ export function generateRecipeSuggestions(
     ({
       criticalMissingCount: _c,
       urgentUsedCount: _u,
-      totalMain: _t,
+      meaningfulTotalMain: _t,
+      meaningfulUsedCount: _m,
       ...recipe
     }) => recipe
   )
@@ -308,44 +361,24 @@ export function generateRecipeSuggestions(
   }
 
   const loose = sampleRecipes
-    .map((recipe) => {
-      const mains = recipe.mainIngredients
-      const usedIngredientIds = mains.filter((id) => pantryIds.has(id))
-      const missingIngredientIds = mains.filter((id) => !pantryIds.has(id))
-      const criticalMissingCount = missingIngredientIds.filter(
-        (id) => !nonCriticalPantryStaples.has(id)
-      ).length
-      const totalMain = mains.length
-      const matchPercentage = Math.round((usedIngredientIds.length / totalMain) * 100)
-      const urgentUsedCount = usedIngredientIds.filter((id) =>
-        urgentIngredientIds.has(id)
-      ).length
-      const substitutions = missingIngredientIds
-        .map((id) => substitutionLineForMissing(id))
-        .filter((line): line is string => Boolean(line))
-      return {
-        title: recipe.title,
-        matchPercentage,
-        matchSummary: `You have ${usedIngredientIds.length} of ${totalMain} main ingredients.`,
-        usedIngredients: labelsForIds(usedIngredientIds),
-        missingIngredients: labelsForIds(missingIngredientIds),
-        substitutions,
-        whyRecommended: buildWhyRecommended(usedIngredientIds, urgentIngredientIds),
-        estimatedTime: recipe.estimatedTime,
-        difficulty: recipe.difficulty,
-        steps: recipe.steps,
-        criticalMissingCount,
-        urgentUsedCount,
-      }
-    })
-    .filter((recipe) => recipe.usedIngredients.length > 0)
+    .map((recipe) => scoreRecipe(recipe, pantryIds, urgentIngredientIds))
+    .filter((r): r is Scored => r !== null)
+    .filter((recipe) => recipe.meaningfulUsedCount > 0)
     .sort((a, b) => {
       if (a.criticalMissingCount !== b.criticalMissingCount) {
         return a.criticalMissingCount - b.criticalMissingCount
       }
-      return b.usedIngredients.length - a.usedIngredients.length
+      return b.meaningfulUsedCount - a.meaningfulUsedCount
     })
     .slice(0, 6)
 
-  return loose.map(({ criticalMissingCount: _c, urgentUsedCount: _u, ...recipe }) => recipe)
+  return loose.map(
+    ({
+      criticalMissingCount: _c,
+      urgentUsedCount: _u,
+      meaningfulTotalMain: _t,
+      meaningfulUsedCount: _m,
+      ...recipe
+    }) => recipe
+  )
 }

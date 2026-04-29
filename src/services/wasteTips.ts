@@ -1,4 +1,7 @@
-import { ingredientsById } from '../data/ingredientKnowledgeBase'
+import {
+  ingredientsById,
+  isLowRecipeMatchWeight,
+} from '../data/ingredientKnowledgeBase'
 import type { ParsedIngredient } from './ingredientParser'
 
 export type WasteTip = {
@@ -13,12 +16,23 @@ function perishRank(p: ParsedIngredient['perishability']): number {
   return 2
 }
 
+function shouldSkipTip(p: ParsedIngredient): boolean {
+  if (isLowRecipeMatchWeight(p.id)) return true
+  if (p.id === 'salt' || p.id === 'black-pepper') return true
+  if (p.perishability === 'low' && (p.category === 'pantry' || p.category === 'condiment')) {
+    return true
+  }
+  return false
+}
+
 export function generateWasteTips(parsedIngredients: ParsedIngredient[]): WasteTip[] {
   if (parsedIngredients.length === 0) {
     return []
   }
 
-  const sorted = [...parsedIngredients].sort((a, b) => {
+  const filtered = parsedIngredients.filter((p) => !shouldSkipTip(p))
+
+  const sorted = [...filtered].sort((a, b) => {
     const ua = a.urgency === 'use soon' ? 0 : 1
     const ub = b.urgency === 'use soon' ? 0 : 1
     if (ua !== ub) return ua - ub
