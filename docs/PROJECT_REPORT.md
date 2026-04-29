@@ -1,103 +1,239 @@
 # CS485 Project Report: Smart Pantry & Recipe Scout
 
-## 1) Goal and Design
+## Project Goal
 
-### Goal
-The goal of this project is to build a practical recipe assistant that helps
-users:
+Build **Smart Pantry & Recipe Scout**, a practical web app that helps users:
 
-- use ingredients they already have,
-- handle incomplete or messy ingredient input,
-- reduce food waste with actionable guidance.
+- Find recipes from **ingredients they already have**
+- Tolerate **messy or incomplete** ingredient text through normalization and aliases
+- See **match quality**, **missing items**, and **substitution hints**
+- Receive **food waste reduction tips** tied to urgency and ingredient metadata
 
-### Design Summary
-This application is built as a frontend-only React + TypeScript + Vite app.
-All logic runs locally in the browser and is rule-based. The app **does not use
-a remote database**; ingredient definitions and recipes are bundled as static
-data. The **simulated fridge image input** does **not** perform image
-recognition—it applies **sample detected ingredient sets** to mimic a future
-feature while keeping the MVP simple and honest.
+The solution is intentionally **frontend-only**: **no backend database**, **no runtime external recipe API**, and **no real computer vision** in the MVP.
 
-High-level flow:
+---
 
-1. User enters ingredients (text) or selects a simulated fridge sample (predefined strings).
-2. **Raw input is normalized into canonical ingredient records**:
-   - Comma-separated fragments are trimmed and lowercased.
-   - Urgency phrases are detected and stripped for matching (`old`, `leftover`,
-     `expiring`, `almost bad`, `use soon`), while still flagging urgency on the parsed item.
-   - Each fragment is resolved through a **local ingredient knowledge base**:
-     aliases map typos, plurals/singulars, and multi-word foods to a **canonical
-     ingredient ID**; the result includes **category**, **perishability**,
-     **storage tips**, **use ideas**, and optional **substitutions**.
-   - **Unknown** fragments still become safe, labeled **canonical records** with
-     category `other` so the UI and tips do not break.
-3. **Recipes match against canonical IDs** stored in the local recipe dataset (not free-text variants like `tomato` vs `tomatoes`).
-4. Rule-based recommendation logic ranks recipe suggestions (missing mains, match strength, urgency-aware use of soon-to-expire items).
-5. UI shows:
-   - parsed ingredient results (canonical identity + metadata-driven display),
-   - recipe match details (used/missing ingredients, match percentage),
-   - substitutions,
-   - waste reduction tips that **use ingredient metadata** (perishability, storage, use ideas) plus urgency.
+## Design Overview
 
-**Browser localStorage** (not a backend) stores the latest pantry textarea value
-so a refresh can restore what the user last typed or edited.
+The app is a **single-page React + TypeScript + Vite** client. Business logic lives in **services** (`ingredientParser`, `recipeGenerator`, `wasteTips`) and **data modules** (knowledge base, sample + curated recipes). The UI uses **HeroUI** components and **Tailwind**-oriented styling.
 
-## 2) Assumptions
+**Honest boundaries:**
 
-- MVP scope is frontend-only (no backend services, no hosted database).
-- Recipe suggestions are based on local sample data **keyed by canonical ingredient IDs**, not live external databases.
-- Simulated image input uses predefined ingredient sets only; **no computer vision pipeline** runs in the browser.
-- The **local knowledge base** was chosen to keep the app **reliable**, **easy to run anywhere**, and **fully offline/frontend-only** without API keys.
-- Users provide ingredients as comma-separated text.
+- **Simulated fridge input** uses **fixed sample ingredient strings**, not photo analysis.
+- **Recipes** come from **local TypeScript datasets** (`sampleRecipes` + `curatedRecipes`) generated or hand-authored; nothing is fetched from the network at runtime for recommendations.
+- **Browser localStorage** may store the latest pantry textarea value for convenience; it is **not** a shared or server database.
 
-## 3) Sample Input/Output
+---
 
-### Sample Input A
-`old spinach, leftover rice, eggg`
+## User Workflow
 
-Expected behavior:
-- Parser maps `eggg` to the canonical ID for eggs (via aliases), with **use soon** urgency from `old` / `leftover`
-- Recipe section ranks recipes that use eggs, rice, and/or spinach appropriately
-- Waste tips prioritize urgent items and draw on **storage/use-idea metadata** where available
+1. **Pantry setup (top of page)**  
+   - Type comma-separated ingredients, **or** pick a **simulated fridge** preset, **or** **Quick Add** from the knowledge base (search + category groups).  
+   - Submit with **Find Recipes**.
 
-### Sample Input B
-`tomatos, pasta, cheeze, onion`
+2. **Results (below)**  
+   Tabs (fixed order): **Recipe Suggestions** → **Waste Tips** → **Parsed Ingredients**.
 
-Expected behavior:
-- Parser resolves to canonical IDs (e.g. tomatoes, cheese) rather than maintaining separate typo strings everywhere
-- Recipe suggestions include pasta-based options with match/missing details
-- Substitution suggestions appear when mapped ingredients are missing (hand-tuned hints plus KB substitutions when relevant)
+3. **Recipe Suggestions**  
+   - Optional **search by recipe name** and **cuisine / style** filter (values come from stored recipe fields).  
+   - **Pagination** shows a subset of the **filtered** list per page (default page size: 6).  
+   - Cards show match %, cuisine/style chip, summary, used/missing, substitutions, rationale, time/difficulty, and short steps.
 
-### Sample Input C
-`milk, banana, bread`
+4. **Waste Tips**  
+   Tips combine **urgency** from user phrasing with **perishability**, **storage**, and **use ideas** from the knowledge base.
 
-Expected behavior:
-- Suggests smoothie- and breakfast-style options where appropriate
-- Displays match percentage and missing ingredients
-- Waste tips can reference fruit/dairy urgency and KB storage guidance
+5. **Parsed Ingredients**  
+   Shows canonicalized ingredients after parsing (for transparency and debugging).
 
-## 4) Challenges
+---
 
-- Designing **alias resolution** (including multi-word foods) so normalization is predictable without a full NLP stack.
-- Keeping the **knowledge base** maintainable as a single source of truth for parsing, tips, and labels.
-- Balancing recommendation ranking so results feel useful and explainable.
-- Avoiding overengineering while still supporting multiple assignment requirements
-  (parsing, recommendations, substitutions, waste tips, simulated image input).
-- Keeping UX clear while displaying many recommendation details.
+## Architecture
 
-## 5) Limitations
+```text
+User input (text / simulated fridge / quick add)
+        │
+        ▼
+ingredientParser  ←→  ingredientKnowledgeBase (aliases, metadata)
+        │
+        ▼
+ParsedIngredient[]  ────────────────┐
+        │                           │
+        ▼                           ▼
+recipeGenerator                   wasteTips
+(sampleRecipes + curatedRecipes)   (urgency + metadata)
+        │                           │
+        ▼                           ▼
+RecipeSuggestion[]                WasteTip[]
+        │
+        ▼
+recipeSuggestionFilters (search + cuisine) → pagination slice → UI
+```
 
-- No real-time recipe API integration or remote database.
-- No nutritional analysis or personalization.
-- No actual computer vision/image recognition pipeline; simulated cards are **sample text only**.
-- Limited sample recipe dataset (small local set for MVP behavior).
-- Rule-based matching and a fixed KB may miss rare ingredients or naming edge cases compared to ML/NLP-based systems.
+- **No mutation** of shared recipe arrays at runtime; filtering and pagination derive **new arrays** for display.
+- **Ranking** is deterministic and runs over local catalog data only.
 
-## 6) Future Improvements
+---
 
-- Integrate a larger recipe knowledge source or API (if allowed in future scope).
-- Add true image recognition for ingredient detection from uploaded photos.
-- Expand the knowledge base with more ingredients, cuisines, and allergy tags.
-- Add user preferences (dietary restrictions, cuisine preferences, time limits).
-- Add optional backend services or account-based history if scope changes; localStorage remains suitable for lightweight local-only persistence.
-- Add test suite coverage for parser and recommendation services.
+## Frontend Stack
+
+| Layer | Choice |
+|--------|--------|
+| UI library | React |
+| Language | TypeScript |
+| Build | Vite |
+| Components | HeroUI (`@heroui/react`) |
+| Styling | Tailwind CSS + app CSS |
+
+---
+
+## Data Layer
+
+| Asset | Role |
+|--------|------|
+| `ingredientKnowledgeBase.ts` | Canonical IDs, aliases, categories, perishability, tips, substitutions |
+| `sampleRecipes.ts` | Hand-authored examples for demos and edge cases |
+| `curatedRecipes.ts` | Large NLG-derived set (e.g. ~10k rows when generated with `CURATE_TARGET=10000`) |
+| `recipeTypes.ts` | `RecipeDef`, strict **`CUISINE_STYLES`** list, `CuisineStyle` type |
+| `cuisineStyleInference.ts` | Shared deterministic rules used by the curation script |
+
+**Raw RecipeNLG CSV** belongs under **`data/raw/`**, is **gitignored**, and should **not** be committed. The **curated TypeScript output** is what ships with the repo for predictable builds.
+
+---
+
+## Ingredient Knowledge Base
+
+- **Canonical IDs** (e.g. `black-pepper`, `peanut butter`) keep matching stable across typos and wording.
+- **Aliases** map plurals, singulars, common typos, and multi-word foods so user text collapses to one ID per phrase where possible.
+- **Category** supports grouping in Quick Add and downstream logic.
+- **Perishability**, **storage tips**, **use ideas**, and **substitutions** feed waste tips and substitution lines.
+
+Unknown fragments can still become safe fallback records so the UI does not crash.
+
+---
+
+## RecipeNLG Curation Pipeline
+
+Script: **`scripts/curateRecipeDataset.ts`**
+
+1. Stream rows from a CSV under **`data/raw/`** (or path from `RECIPE_NLG_CSV`).
+2. Parse ingredient and direction fields; resolve lines to **canonical IDs** via the knowledge base.
+3. Split **main** vs **low-weight staple** ingredients using KB flags.
+4. Apply quality filters (minimum mains, reasonable counts, dedupe by normalized title).
+5. Assign **`cuisineStyle`** using shared **`inferCuisineStyleFromSignals`** (`src/data/cuisineStyleInference.ts`) — **deterministic**, **broad**, prefer **General** when uncertain.
+6. Synthesize **short generic steps** (original long directions are not copied verbatim).
+7. Validate labels against **`CUISINE_STYLES`**; log counts per style; write **`src/data/curatedRecipes.ts`**.
+
+Regenerate with:
+
+```bash
+npm run curate:recipes
+```
+
+Example (PowerShell, 10k target):
+
+```powershell
+$env:CURATE_TARGET="10000"; npm run curate:recipes
+```
+
+---
+
+## Recipe Recommendation Logic
+
+- **Main ingredients** (meaningful, non-staple) drive **match percentage** and **missing** lists.
+- Recipes are **scored and sorted** by missing count, meaningful matches, urgent-ingredient use, and match %.
+- A **fallback path** can propose simple pantry-friendly ideas when the main pool is thin.
+- **Substitutions** combine hand-tuned strings and knowledge-base substitution entries where available.
+
+The UI passes only a **bounded pool** of top suggestions into search/filter/pagination so interaction stays responsive.
+
+---
+
+## Cuisine / Style Inference
+
+- **Allowed values** are fixed in **`CUISINE_STYLES`** / **`CuisineStyle`** in `recipeTypes.ts`.
+- **Curated recipes** store **`cuisineStyle`** at build time of `curatedRecipes.ts`.
+- The UI reads **stored** labels for chips and filters; runtime fallback may coerce invalid legacy data to **General**.
+- Inference uses **title, ingredient text, and direction snippets** with **ordered rules** (e.g. strong regional signals before broad buckets like Pasta or Sandwich). Results are **not perfect** and remain **high-level labels**.
+
+---
+
+## Food Waste Tips Logic
+
+Tips are generated from **parsed ingredients**:
+
+- **Urgency** phrases (`old`, `leftover`, `use soon`, etc.) raise priority.
+- **Perishability** and **category** tune messaging.
+- **Storage tips** and **use ideas** from the knowledge base are woven into actionable suggestions.
+
+---
+
+## Assumptions
+
+- Users accept **comma-oriented** text entry and occasional parser ambiguity on exotic phrases.
+- **Course / MVP scope** stays frontend-only unless explicitly expanded.
+- **Cuisine labels** are informative, not authoritative culinary taxonomy.
+- **Curated steps** are teaching/demo-friendly, not full professional recipes.
+
+---
+
+## Sample Input / Output
+
+### Input: `old spinach, leftover rice, eggg`
+
+- `eggg` → eggs via aliases; spinach/rice normalized; **use soon** urgency on spinach/rice.
+- Recipes favoring those IDs rank higher; waste tips stress using urgent items.
+
+### Input: `tomatos, cheeze, eggg`
+
+- Typos map to tomatoes, cheese, eggs.
+- Suggestions include matches with clear used/missing breakdown.
+
+### Input: `pasta, tomatoes, garlic, cheese`
+
+- Strong Italian/pasta-style recipes may appear among top matches; cuisine chip reflects **stored** `cuisineStyle`.
+
+### Input: *(empty)*
+
+- Submitting empty input should yield an empty or guarded experience without breaking the app.
+
+---
+
+## Challenges
+
+- Designing **alias resolution** so multi-word ingredients (e.g. peanut butter vs butter) and pepper variants stay distinct.
+- Scaling to **thousands of curated recipes** while keeping bundle size and UX (filters + pagination) manageable.
+- **Cuisine inference** that is useful but not over-confident.
+- Clear UX for **pantry setup vs results** and **pagination** without confusing state.
+
+---
+
+## Limitations
+
+- **No backend database**; all static data is bundled; localStorage is browser-local only.
+- **No real image recognition**; simulated fridge uses sample lists only.
+- **Cuisine/style** is **rule-based** and **approximate**.
+- **Curated directions** are **short synthesized text**, not original NLG prose.
+- **Knowledge base** cannot cover every ingredient worldwide.
+
+---
+
+## Future Improvements
+
+- Unit/integration tests for parser, filters, and recommendation edge cases.
+- Optional API or backend only if scope allows.
+- Expanded KB (allergens, diets, regional names).
+- Real image pipeline only with explicit scope and privacy review.
+
+---
+
+## Testing Summary
+
+Manual verification regularly covers:
+
+- Representative pantry strings (including typos and urgency).
+- Simulated fridge presets and Quick Add searches (`peanut butter`, `black pepper`, `bell peppers`).
+- **Find Recipes**, **search**, **cuisine filter**, **pagination** (page changes, filter resets).
+- **Build**: `npm run build`; **lint**: `npm run lint`.
+- **Curation** (when raw CSV available): `npm run curate:recipes` with expected row counts and console histogram.
+
+Automated test suites are a documented future improvement rather than a current requirement.
