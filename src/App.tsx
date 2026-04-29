@@ -25,7 +25,13 @@ import { generateWasteTips, type WasteTip } from './services/wasteTips'
 const PANTRY_LOCAL_STORAGE_KEY = 'smart-pantry-recipe-scout-pantry-input-v1'
 
 function App() {
-  const [ingredientText, setIngredientText] = useState('')
+  const [ingredientText, setIngredientText] = useState(() => {
+    try {
+      return localStorage.getItem(PANTRY_LOCAL_STORAGE_KEY) ?? ''
+    } catch {
+      return ''
+    }
+  })
   const [submittedIngredients, setSubmittedIngredients] = useState('')
   const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>(
     []
@@ -34,17 +40,6 @@ function App() {
     []
   )
   const [wasteTips, setWasteTips] = useState<WasteTip[]>([])
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(PANTRY_LOCAL_STORAGE_KEY)
-      if (saved !== null) {
-        setIngredientText(saved)
-      }
-    } catch {
-      /* ignore quota / privacy mode */
-    }
-  }, [])
 
   useEffect(() => {
     try {

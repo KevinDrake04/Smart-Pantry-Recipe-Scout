@@ -1,15 +1,7 @@
 /** Recipe ingredient ids must match canonical ids in `ingredientKnowledgeBase.ts`. */
-export type SampleRecipe = {
-  title: string
-  /** Ingredients that drive matching and “missing” lists */
-  mainIngredients: string[]
-  /** Nice-to-have staples — not counted in match % or missing */
-  optionalStaples?: string[]
-  tags?: string[]
-  estimatedTime: string
-  difficulty: 'Easy' | 'Medium'
-  steps: string[]
-}
+import type { RecipeDef } from './recipeTypes'
+
+export type SampleRecipe = RecipeDef
 
 export const sampleRecipes: SampleRecipe[] = [
   {

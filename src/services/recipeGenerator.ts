@@ -1,4 +1,8 @@
+import type { RecipeDef } from '../data/recipeTypes'
+import { curatedRecipes } from '../data/curatedRecipes'
 import { sampleRecipes } from '../data/sampleRecipes'
+
+const recipeCatalog: RecipeDef[] = [...sampleRecipes, ...curatedRecipes]
 import {
   formatIngredientLabel,
   ingredientsById,
@@ -240,8 +244,23 @@ type Scored = {
   meaningfulUsedCount: number
 }
 
+function toSuggestion(r: Scored): RecipeSuggestion {
+  return {
+    title: r.title,
+    matchPercentage: r.matchPercentage,
+    matchSummary: r.matchSummary,
+    usedIngredients: r.usedIngredients,
+    missingIngredients: r.missingIngredients,
+    substitutions: r.substitutions,
+    whyRecommended: r.whyRecommended,
+    estimatedTime: r.estimatedTime,
+    difficulty: r.difficulty,
+    steps: r.steps,
+  }
+}
+
 function scoreRecipe(
-  recipe: (typeof sampleRecipes)[0],
+  recipe: RecipeDef,
   pantryIds: Set<string>,
   urgentIngredientIds: Set<string>
 ): Scored | null {
@@ -315,7 +334,7 @@ export function generateRecipeSuggestions(
       .map((ingredient) => ingredient.id)
   )
 
-  const scoredRecipes = sampleRecipes
+  const scoredRecipes = recipeCatalog
     .map((recipe) => scoreRecipe(recipe, pantryIds, urgentIngredientIds))
     .filter((r): r is Scored => r !== null)
     .filter((recipe) => recipe.meaningfulUsedCount > 0)
@@ -341,15 +360,7 @@ export function generateRecipeSuggestions(
       return b.matchPercentage - a.matchPercentage
     })
 
-  const topSuggestions = scoredRecipes.slice(0, 6).map(
-    ({
-      criticalMissingCount: _c,
-      urgentUsedCount: _u,
-      meaningfulTotalMain: _t,
-      meaningfulUsedCount: _m,
-      ...recipe
-    }) => recipe
-  )
+  const topSuggestions = scoredRecipes.slice(0, 6).map(toSuggestion)
 
   if (topSuggestions.length > 0) {
     return topSuggestions
@@ -360,7 +371,7 @@ export function generateRecipeSuggestions(
     return fallbackSuggestions.slice(0, 6)
   }
 
-  const loose = sampleRecipes
+  const loose = recipeCatalog
     .map((recipe) => scoreRecipe(recipe, pantryIds, urgentIngredientIds))
     .filter((r): r is Scored => r !== null)
     .filter((recipe) => recipe.meaningfulUsedCount > 0)
@@ -372,13 +383,5 @@ export function generateRecipeSuggestions(
     })
     .slice(0, 6)
 
-  return loose.map(
-    ({
-      criticalMissingCount: _c,
-      urgentUsedCount: _u,
-      meaningfulTotalMain: _t,
-      meaningfulUsedCount: _m,
-      ...recipe
-    }) => recipe
-  )
+  return loose.map(toSuggestion)
 }

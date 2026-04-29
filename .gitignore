@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# RecipeNLG / curation (keep src/data/curatedRecipes.ts committed)
+data/raw/
+data/processed/
+*.csv
+*.sqlite
+*.db
+*.parquet
+*.jsonl
