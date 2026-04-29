@@ -8,15 +8,17 @@
 
 - **Manual ingredient text input** — Comma-separated pantry lists; latest text can persist in the browser.
 - **Simulated fridge image input** — Loads sample “detected” ingredient sets into the textarea (not real image recognition).
-- **Quick Add Ingredients** — Browse/search the full local ingredient knowledge base by category; toggles sync with the textarea.
+- **Quick Add Ingredients** — Compact category browsing over the local ingredient knowledge base. Quick Add intentionally hides many “pantry-only” items (e.g. salt, most oils, and many seasonings/spices) so one-click selections usually generate useful recipe matches. Manual typing still supports the full knowledge base.
 - **Local ingredient knowledge base** — Canonical IDs, aliases (plurals, singulars, typos, multi-word foods), category and perishability metadata, storage tips, use ideas, and substitutions.
 - **Alias examples** — e.g. `tomatos` → tomatoes, `cheeze` → cheese, `eggg` → eggs; **“black pepper”** resolves to pepper, not bell peppers; **“peanut butter”** stays a distinct ingredient from butter.
 - **Recipe recommendations** — Ranked by match quality against curated + sample recipes; shows used vs missing mains, match percentage, substitutions, and short reasons.
-- **RecipeNLG-based curation** — Optional script streams a RecipeNLG-style CSV, resolves ingredients through the knowledge base, infers cuisine/style, and emits `src/data/curatedRecipes.ts` (~10,000 rows when `CURATE_TARGET=10000` and the raw file supports it).
+- **RecipeNLG-based curation** — Script streams a RecipeNLG-style CSV, resolves ingredients through the knowledge base, infers cuisine/style, and emits `src/data/curatedRecipes.ts` (default target **50,000** when `CURATE_TARGET=50000`). The pipeline uses `worker_threads` for CPU-heavy work and includes local caching to keep it fast.
 - **Cuisine / style** — Strict allowed list on the TypeScript side; labels assigned at curation time via deterministic rules (broad, conservative; uncertain → General).
 - **Recipe search** — Filter suggestions by recipe title.
 - **Cuisine / style filter** — Narrow suggestions using stored labels.
-- **Pagination** — Recipe Suggestions tab shows a fixed page size (default 6 per page) so long lists stay manageable.
+- **Pagination** — Recipe Suggestions tab shows a fixed page size (default **6 per page**). The ranked suggestion pool feeding search/filter/pagination is bounded for UI performance, so pagination can grow (up to ~20 pages when many recipes match) without flooding the UI.
+- **Match threshold (“Min match”)** — Compact segmented buttons (25%+, 50%+, 75%+, 90%) filter recipes by minimum match percentage.
+- **View source links** — RecipeNLG `sourceUrl` is normalized/validated and **blocked** for known stale/unavailable domains; the UI only shows “View source” when a valid non-blocked `sourceUrl` exists.
 - **Food waste tips** — Driven by urgency cues, perishability, storage metadata, and use ideas.
 - **localStorage** — Saves the latest pantry textarea content for convenience only (not a server database).
 
@@ -45,7 +47,8 @@ smart-pantry-recipe-scout/
 │   └── AI_USAGE_REPORT.md
 ├── public/
 ├── scripts/
-│   └── curateRecipeDataset.ts   # Streams CSV → curatedRecipes.ts
+│   ├── curateRecipeDataset.ts   # Streams CSV → curatedRecipes.ts (main thread)
+│   └── curateRecipeDataset.worker.ts   # worker_threads batch processor
 ├── src/
 │   ├── App.tsx                # Main UI: pantry setup, results tabs, filters, pagination
 │   ├── components/            # IngredientInput, IngredientPicker, SimulatedImageInput, …
@@ -124,15 +127,32 @@ npm run lint
 npm run curate:recipes
 ```
 
-Default target size is **10,000** recipes (`CURATE_TARGET`); adjust if needed.
+Default target size is **50,000** recipes (`CURATE_TARGET`); adjust if needed.
 
-**PowerShell (Windows) example — generate up to 10,000 curated rows:**
+**PowerShell (Windows) examples**
 
+Fast/local curation (benchmark-style):
 ```powershell
-$env:CURATE_TARGET="10000"; npm run curate:recipes
+$env:CURATE_TARGET="5000"; $env:CURATE_WORKERS="12"; $env:CURATE_BATCH_SIZE="2500"; npm run curate:recipes
+```
+
+Full curation:
+```powershell
+$env:CURATE_TARGET="50000"; $env:CURATE_WORKERS="12"; $env:CURATE_BATCH_SIZE="2500"; npm run curate:recipes
 ```
 
 This writes **`src/data/curatedRecipes.ts`**. Commit that file if your course workflow expects it; the **raw CSV stays out of Git**.
+
+---
+## How to Audit Curated Recipes
+
+Run the audit script to inspect coverage and basic quality checks:
+
+```bash
+npm run audit:recipes
+```
+
+The audit is a lightweight console report (no network calls) that helps confirm cuisine/style coverage, step source usage, and step quality (e.g. too few/duplicate steps).
 
 ---
 
@@ -160,14 +180,26 @@ Use these in the ingredient field (and optionally Simulated Fridge / Quick Add).
 | 2 | `rice, black beans, salsa, cheese` |
 | 3 | `eggs, rice, soy sauce` |
 | 4 | `chicken, rice, broccoli` |
-| 5 | `peanut butter, banana, bread` |
-| 6 | `black pepper, salt, eggs` |
-| 7 | `salt, black pepper, olive oil` |
-| 8 | `old spinach, leftover rice, eggs` |
-| 9 | `tomatos, cheeze, eggg` |
-| 10 | *(empty)* — submit to verify empty/edge handling |
+| 5 | `noodles, soy sauce, eggs` |
+| 6 | `bread, cheese, tomatoes` |
+| 7 | `tortilla, cheese, salsa` |
+| 8 | `peanut butter, banana, bread` |
+| 9 | `black pepper, salt, eggs` |
+| 10 | `salt, black pepper, olive oil` |
+| 11 | `old spinach, leftover rice, eggs` |
+| 12 | `tomatos, cheeze, eggg` |
+| 13 | *(empty)* — submit to verify empty/edge handling |
 
-Also try **Simulated Fridge Image Input** presets (e.g. weeknight leftovers, breakfast basics, pasta night) and **Quick Add** searches such as `peanut butter`, `black pepper`, and `bell peppers` to confirm distinct canonical matches.
+Also try **Simulated Fridge Image Input** presets (e.g. weeknight leftovers, breakfast basics, pasta night) to confirm the textarea fills with sample “detected” ingredients.
+
+### Quick Add manual checks
+- Search and toggle `peanut butter` (should appear)
+- Search and toggle `rice` (should appear)
+- Search and toggle `eggs` (should appear)
+- Search and toggle `chicken` (should appear)
+- Search `soy sauce` (should *not* appear in Quick Add; typing it manually should still parse)
+- Search `black pepper` (should *not* appear in Quick Add; typing it manually should still parse and should not map to bell peppers)
+- Search `salt` and common oils (should *not* appear in Quick Add)
 
 ---
 
@@ -177,9 +209,11 @@ Also try **Simulated Fridge Image Input** presets (e.g. weeknight leftovers, bre
 - **No real image recognition** — Simulated fridge cards only paste predefined ingredient strings.
 - **No runtime external recipe or AI APIs** — Recommendations are rule-based over local data.
 - **Cuisine/style labels** are **inferred with deterministic rules** during curation; they are **broad** and **not guaranteed** to match a human chef’s taxonomy.
-- **Curated recipe steps** are **short synthesized summaries** for the app, not full original RecipeNLG directions.
+- **Recipe steps** come from cleaned RecipeNLG `directions` when usable; otherwise the app shows generated fallback “Suggested steps”.
 - **Knowledge base coverage** — Rare ingredients or spellings may not resolve to ideal canonical IDs.
-- **Recommendation pool** — The UI works with a bounded pool of top suggestions for performance and filtering; extremely large match sets are paginated for readability, not all catalog recipes at once.
+- **Recommendation pool** — The UI works with a bounded pool of ranked suggestions (max 120) for performance and filtering; extremely large match sets are paginated for readability, not all catalog recipes at once.
+
+- **Stale source URLs** — RecipeNLG `sourceUrl` values are normalized/validated and blocked for known unavailable domains (e.g. `cookbooks.com`), so cards show “View source” only when a valid non-blocked URL exists.
 
 ---
 

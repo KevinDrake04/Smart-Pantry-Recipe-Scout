@@ -28,12 +28,10 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 4. “Build rule-based recipe scoring: match percentage, missing mains, substitutions, and a clear ‘why recommended’ string.”
 5. “Add a simulated fridge component that fills the textarea from preset ingredient strings—clearly not real computer vision.”
 6. “Wire HeroUI cards, buttons, and inputs for a cleaner dashboard layout and responsive grid.”
-7. “Create a Node script that streams RecipeNLG CSV, resolves ingredients through the KB, outputs `curatedRecipes.ts`, and skips committing raw data.”
+7. “Create a curation script that uses worker threads for per-row CPU work (ingredient resolution + directions parsing/cleaning + step selection), filters stale RecipeNLG source URLs, and outputs `src/data/curatedRecipes.ts` (without committing raw datasets).”
 8. “Add deterministic cuisine/style inference with a strict allowed list; prefer General when uncertain.”
-9. “Fix sorting/filter bugs for recipe suggestions and cuisine dropdown ordering.”
-10. “Improve waste tips to use perishability and KB storage/use-idea text.”
-11. “Add pagination for recipe suggestions after search and cuisine filters, with reset behavior on new pantry submit.”
-12. “Update README, project report, and AI usage report for the current feature set.”
+9. “Fix sorting/filter bugs for recipe suggestions and cuisine dropdown ordering, including pagination resets and match-threshold behavior.”
+10. “Improve waste tips to use perishability and KB storage/use-idea text, and document match threshold + pagination UI expectations.”
 
 ---
 
@@ -60,8 +58,12 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 - **Parser and KB edge cases** — Multi-word ingredients, pepper vs bell pepper, typos, empty input.
 - **Recommendation ranking** and substitution copy so outputs stay explainable.
 - **Curation script** — Filters, validation, `CURATE_TARGET`, and verifying counts after regeneration.
+- **Worker-thread optimization + caching** — debugging/iterating on `worker_threads` for per-row CPU work, and adding cache hit/miss stats to confirm speedups without behavior drift.
+- **Recipe steps from original directions** — parsing/cleaning dataset `directions`, falling back to generated templates when unusable, and labeling `Recipe steps` vs `Suggested steps` honestly.
+- **Stale source URL filtering** — blocking known unavailable domains (e.g. `cookbooks.com`) and ensuring “View source” only renders for valid `sourceUrl`.
 - **Cuisine list** and inference order so broad labels do not steal confident regional styles.
 - **UI behavior** — Tab order, pantry layout, filter resets, pagination resets, mobile layout.
+- **Match threshold + pagination** — ensuring filter reset behavior, and adjusting the ranked UI suggestion pool size to keep pagination useful but bounded for performance.
 - **All verification**: `npm run build`, `npm run lint`, manual test strings, and optional `npm run curate:recipes` when raw CSV is present.
 
 ---
@@ -98,10 +100,35 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 - **Build**: `npm run build` must succeed.
 - **Lint**: `npm run lint` must succeed.
 - **Manual**: Course-provided and extended ingredient strings; simulated fridge; Quick Add searches; filters; pagination; empty input.
-- **Curation** (when applicable): Run `npm run curate:recipes`, inspect console counts, spot-check `curatedRecipes.ts` header and sample rows.
+- **Curation** (when applicable): Run `npm run curate:recipes` (optionally with `CURATE_TARGET`, `CURATE_WORKERS`, and `CURATE_BATCH_SIZE`), inspect console counts/cache stats, then run `npm run audit:recipes` and spot-check `curatedRecipes.ts` header/sample rows (including sourceUrl + stepsSource).
 
 ---
 
+## Manual Test Cases
+
+1. `pasta, tomatoes, garlic, cheese`
+2. `rice, black beans, salsa, cheese`
+3. `eggs, rice, soy sauce`
+4. `chicken, rice, broccoli`
+5. `noodles, soy sauce, eggs`
+6. `bread, cheese, tomatoes`
+7. `tortilla, cheese, salsa`
+8. `peanut butter, banana, bread`
+9. `black pepper, salt, eggs`
+10. `salt, black pepper, olive oil`
+11. `old spinach, leftover rice, eggs`
+12. `tomatos, cheeze, eggg`
+13. *(empty input)* — verify the app handles it without breaking
+
+### Quick Add Manual Checks
+- `peanut butter` should appear
+- `rice` should appear
+- `eggs` should appear
+- `chicken` should appear
+- `soy sauce` should not appear in Quick Add, but should still parse when typed manually
+- `black pepper` should not appear in Quick Add, but should still parse manually (and should not map to bell peppers)
+- `salt` and oils should not appear in Quick Add
+
 ## Honesty Statement
 
-AI tools generated **drafts and code suggestions**. I **reviewed, edited, tested, and refined prompts**, fixed **UX and logic issues**, and verified behavior through **lint, build, and manual testing**. The app **does not use a backend database**, **does not use real image recognition** (simulated fridge uses **sample ingredient sets**), and relies on **local TypeScript data** plus optional **localStorage** for the pantry textarea. **Cuisine/style** is **inferred with deterministic rules** from titles and text during curation and is **broad, not perfect**. **Recipe steps** in curated data are **simplified for the app**, not full original dataset directions.
+AI tools generated **drafts and code suggestions**. I **reviewed, edited, tested, and refined prompts**, fixed **UX and logic issues**, and verified behavior through **lint, build, and manual testing**. The app **does not use a backend database**, **does not use real image recognition** (simulated fridge uses **sample ingredient sets**), and relies on **local TypeScript data** plus optional **localStorage** for the pantry textarea. **Cuisine/style** is **inferred with deterministic rules** from titles and text during curation and is **broad, not perfect**. **Recipe steps** come from cleaned RecipeNLG `directions` when usable, otherwise the app shows generated fallback “Suggested steps”.

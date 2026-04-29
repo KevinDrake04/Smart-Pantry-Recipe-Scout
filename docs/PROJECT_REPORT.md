@@ -120,8 +120,10 @@ Script: **`scripts/curateRecipeDataset.ts`**
 3. Split **main** vs **low-weight staple** ingredients using KB flags.
 4. Apply quality filters (minimum mains, reasonable counts, dedupe by normalized title).
 5. Assign **`cuisineStyle`** using shared **`inferCuisineStyleFromSignals`** (`src/data/cuisineStyleInference.ts`) — **deterministic**, **broad**, prefer **General** when uncertain.
-6. Synthesize **short generic steps** (original long directions are not copied verbatim).
-7. Validate labels against **`CUISINE_STYLES`**; log counts per style; write **`src/data/curatedRecipes.ts`**.
+6. Parse and clean original RecipeNLG **`directions`** into a short step array when usable.
+   - If at least 3 cleaned dataset steps pass basic validation → store them as dataset steps (`stepsSource="dataset"`).
+   - If directions are missing/unusable → use the existing generated fallback templates (`stepsSource="generated"`).
+7. Normalize and filter RecipeNLG source URLs (store `sourceUrl` / `sourceName` only when valid and not blocked for known stale/unavailable domains), validate labels against **`CUISINE_STYLES`**; log counts per style; write **`src/data/curatedRecipes.ts`**.
 
 Regenerate with:
 
@@ -129,11 +131,19 @@ Regenerate with:
 npm run curate:recipes
 ```
 
-Example (PowerShell, 10k target):
+### Example (PowerShell, fast/local and full runs)
 
 ```powershell
-$env:CURATE_TARGET="10000"; npm run curate:recipes
+$env:CURATE_TARGET="5000"; $env:CURATE_WORKERS="12"; $env:CURATE_BATCH_SIZE="2500"; npm run curate:recipes
 ```
+
+```powershell
+$env:CURATE_TARGET="50000"; $env:CURATE_WORKERS="12"; $env:CURATE_BATCH_SIZE="2500"; npm run curate:recipes
+```
+
+### Worker-thread curation optimization
+
+`npm run curate:recipes` uses `worker_threads` to parallelize CPU-heavy per-row processing (ingredient phrase resolution, directions parsing/cleaning, and dataset-vs-generated step selection). The main thread remains responsible for global dedupe/balancing and for writing `src/data/curatedRecipes.ts`. Worker-local caches reduce repeated alias/phrase resolution work.
 
 ---
 
@@ -144,7 +154,9 @@ $env:CURATE_TARGET="10000"; npm run curate:recipes
 - A **fallback path** can propose simple pantry-friendly ideas when the main pool is thin.
 - **Substitutions** combine hand-tuned strings and knowledge-base substitution entries where available.
 
-The UI passes only a **bounded pool** of top suggestions into search/filter/pagination so interaction stays responsive.
+The UI passes only a **bounded ranked pool** of top suggestions into search/filter/pagination so interaction stays responsive.
+
+This pool is capped at **`MAX_RECIPE_SUGGESTIONS = 120`**. With **6 recipes per page**, pagination can reach up to ~20 pages when enough recipes match.
 
 ---
 
@@ -167,12 +179,20 @@ Tips are generated from **parsed ingredients**:
 
 ---
 
+## Quick Add Ingredient Filtering
+
+The Quick Add picker intentionally shows only ingredient IDs that are more likely to be meaningful recipe drivers.
+
+Instead of listing every knowledge-base entry, it uses recipe-catalog support signals to hide many pantry-only/staple/seasoning items (for example `salt`, many oils/spices, and other low-match condiments). Manual typing still supports the full ingredient knowledge base, so users can type `soy sauce`, `black pepper`, or `salt` and the parser can resolve them even if Quick Add hides them.
+
+---
+
 ## Assumptions
 
 - Users accept **comma-oriented** text entry and occasional parser ambiguity on exotic phrases.
 - **Course / MVP scope** stays frontend-only unless explicitly expanded.
 - **Cuisine labels** are informative, not authoritative culinary taxonomy.
-- **Curated steps** are teaching/demo-friendly, not full professional recipes.
+- **Recipe steps** are teaching/demo-friendly. When curated dataset `directions` are usable, the app uses cleaned dataset steps; otherwise it uses generated fallback templates.
 
 ---
 
@@ -212,7 +232,8 @@ Tips are generated from **parsed ingredients**:
 - **No backend database**; all static data is bundled; localStorage is browser-local only.
 - **No real image recognition**; simulated fridge uses sample lists only.
 - **Cuisine/style** is **rule-based** and **approximate**.
-- **Curated directions** are **short synthesized text**, not original NLG prose.
+- **Recipe steps** come from cleaned dataset directions when usable; otherwise the app uses generated fallback templates (“Suggested steps”).
+- **Stale RecipeNLG source URLs** may be blocked; the UI shows “View source” only when `sourceUrl` is valid and not in the unavailable domain blocklist.
 - **Knowledge base** cannot cover every ingredient worldwide.
 
 ---
