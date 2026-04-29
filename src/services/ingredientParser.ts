@@ -1,108 +1,95 @@
-export type IngredientCategory =
-  | 'protein'
-  | 'grain'
-  | 'vegetable'
-  | 'fruit'
-  | 'dairy'
-  | 'pantry'
-  | 'other'
+import {
+  createUnknownIngredientRecord,
+  normalizeIngredientPhrase,
+  resolveIngredientPhrase,
+  type IngredientCategory,
+  type IngredientRecord,
+  type Perishability,
+} from '../data/ingredientKnowledgeBase'
 
 export type IngredientUrgency = 'use soon' | 'normal'
 
 export type ParsedIngredient = {
+  id: string
   name: string
   originalText: string
   category: IngredientCategory
   urgency: IngredientUrgency
+  perishability: Perishability
+  storageTip: string
+  useIdeas: string[]
+  substitutions?: string[]
 }
 
-const typoMap: Record<string, string> = {
-  tomatos: 'tomatoes',
-  eggg: 'eggs',
-  spinich: 'spinach',
-  cheeze: 'cheese',
-}
+export type { IngredientCategory, Perishability } from '../data/ingredientKnowledgeBase'
 
-const urgencyTerms = ['old', 'leftover', 'expiring', 'almost bad']
+/** Strip urgency cues before canonical matching (longest phrases first). */
+const URGENCY_PHRASES = ['almost bad', 'use soon', 'leftover', 'expiring', 'old']
 
-const categoryMap: Record<string, IngredientCategory> = {
-  eggs: 'protein',
-  chicken: 'protein',
-  beef: 'protein',
-  fish: 'protein',
-  tofu: 'protein',
-  beans: 'protein',
-  rice: 'grain',
-  pasta: 'grain',
-  bread: 'grain',
-  oats: 'grain',
-  spinach: 'vegetable',
-  onion: 'vegetable',
-  tomato: 'vegetable',
-  tomatoes: 'vegetable',
-  carrot: 'vegetable',
-  carrots: 'vegetable',
-  banana: 'fruit',
-  apple: 'fruit',
-  apples: 'fruit',
-  orange: 'fruit',
-  oranges: 'fruit',
-  milk: 'dairy',
-  cheese: 'dairy',
-  yogurt: 'dairy',
-  butter: 'dairy',
-  flour: 'pantry',
-  sugar: 'pantry',
-  salt: 'pantry',
-  oil: 'pantry',
-  spices: 'pantry',
-}
-
-function cleanIngredientName(raw: string): { name: string; urgency: IngredientUrgency } {
-  let cleaned = raw.trim().toLowerCase()
+function stripUrgency(raw: string): { cleaned: string; urgency: IngredientUrgency } {
+  let s = normalizeIngredientPhrase(raw)
   let urgency: IngredientUrgency = 'normal'
+  const sorted = [...URGENCY_PHRASES].sort((a, b) => b.length - a.length)
 
-  for (const term of urgencyTerms) {
-    if (cleaned.includes(term)) {
+  for (const phrase of sorted) {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')
+    const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`, 'gi')
+    if (re.test(s)) {
       urgency = 'use soon'
-      const expression = new RegExp(`\\b${term}\\b`, 'g')
-      cleaned = cleaned.replace(expression, ' ')
+      s = s.replace(re, ' ')
     }
   }
 
-  cleaned = cleaned.replace(/\s+/g, ' ').trim()
-  cleaned = typoMap[cleaned] ?? cleaned
-
-  return { name: cleaned, urgency }
+  s = normalizeIngredientPhrase(s)
+  return { cleaned: s, urgency }
 }
 
-function categorizeIngredient(name: string): IngredientCategory {
-  return categoryMap[name] ?? 'other'
+function toParsed(
+  record: IngredientRecord,
+  originalText: string,
+  urgency: IngredientUrgency
+): ParsedIngredient {
+  return {
+    id: record.id,
+    name: record.name,
+    originalText,
+    category: record.category,
+    urgency,
+    perishability: record.perishability,
+    storageTip: record.storageTip,
+    useIdeas: record.useIdeas,
+    substitutions: record.substitutions,
+  }
 }
 
 export function parseIngredients(rawInput: string): ParsedIngredient[] {
-  const parsed: ParsedIngredient[] = []
-  const seenNames = new Set<string>()
-
-  for (const token of rawInput.split(',')) {
-    const originalText = token.trim()
-    if (!originalText) {
-      continue
-    }
-
-    const { name, urgency } = cleanIngredientName(originalText)
-    if (!name || seenNames.has(name)) {
-      continue
-    }
-
-    seenNames.add(name)
-    parsed.push({
-      name,
-      originalText,
-      category: categorizeIngredient(name),
-      urgency,
-    })
+  const trimmed = rawInput.trim()
+  if (!trimmed) {
+    return []
   }
 
-  return parsed
+  const byId = new Map<string, ParsedIngredient>()
+
+  for (const segment of rawInput.split(',')) {
+    const originalText = segment.trim()
+    if (!originalText) continue
+
+    const { cleaned, urgency } = stripUrgency(segment)
+    if (!cleaned) continue
+
+    const resolved = resolveIngredientPhrase(cleaned)
+    const record = resolved ?? createUnknownIngredientRecord(cleaned)
+
+    const existing = byId.get(record.id)
+    if (existing) {
+      if (urgency === 'use soon') {
+        existing.urgency = 'use soon'
+      }
+      continue
+    }
+
+    byId.set(record.id, toParsed(record, originalText, urgency))
+  }
+
+  return [...byId.values()]
 }

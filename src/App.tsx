@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -22,6 +22,8 @@ import {
 } from './services/recipeGenerator'
 import { generateWasteTips, type WasteTip } from './services/wasteTips'
 
+const PANTRY_LOCAL_STORAGE_KEY = 'smart-pantry-recipe-scout-pantry-input-v1'
+
 function App() {
   const [ingredientText, setIngredientText] = useState('')
   const [submittedIngredients, setSubmittedIngredients] = useState('')
@@ -33,12 +35,44 @@ function App() {
   )
   const [wasteTips, setWasteTips] = useState<WasteTip[]>([])
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PANTRY_LOCAL_STORAGE_KEY)
+      if (saved !== null) {
+        setIngredientText(saved)
+      }
+    } catch {
+      /* ignore quota / privacy mode */
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PANTRY_LOCAL_STORAGE_KEY, ingredientText)
+    } catch {
+      /* ignore */
+    }
+  }, [ingredientText])
+
   const handleSubmit = () => {
     const parsed = parseIngredients(ingredientText)
     setSubmittedIngredients(ingredientText)
     setParsedIngredients(parsed)
     setRecipeSuggestions(generateRecipeSuggestions(parsed))
     setWasteTips(generateWasteTips(parsed))
+  }
+
+  const handleClearPantry = () => {
+    setIngredientText('')
+    try {
+      localStorage.removeItem(PANTRY_LOCAL_STORAGE_KEY)
+    } catch {
+      /* ignore */
+    }
+    setSubmittedIngredients('')
+    setParsedIngredients([])
+    setRecipeSuggestions([])
+    setWasteTips([])
   }
 
   const hasSubmitted = submittedIngredients.trim() !== ''
@@ -77,6 +111,7 @@ function App() {
                 value={ingredientText}
                 onChange={setIngredientText}
                 onSubmit={handleSubmit}
+                onClearPantry={handleClearPantry}
               />
               {hasSubmitted && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-snug text-slate-600">
@@ -190,7 +225,7 @@ function App() {
                     <div className="flex flex-wrap gap-2">
                       {parsedIngredients.map((ingredient) => (
                         <Chip
-                          key={ingredient.name}
+                          key={ingredient.id}
                           size="sm"
                           variant="soft"
                           color={ingredient.urgency === 'use soon' ? 'warning' : 'default'}

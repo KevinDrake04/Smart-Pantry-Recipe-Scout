@@ -1,3 +1,4 @@
+import { ingredientsById } from '../data/ingredientKnowledgeBase'
 import type { ParsedIngredient } from './ingredientParser'
 
 export type WasteTip = {
@@ -6,55 +7,10 @@ export type WasteTip = {
   priority: 'high' | 'medium'
 }
 
-const leafyGreens = new Set(['spinach', 'lettuce', 'kale'])
-
-function tipForIngredient(ingredient: ParsedIngredient): WasteTip[] {
-  const tips: WasteTip[] = []
-  const isUrgent = ingredient.urgency === 'use soon'
-  const priority: 'high' | 'medium' = isUrgent ? 'high' : 'medium'
-
-  if (leafyGreens.has(ingredient.name)) {
-    tips.push({
-      title: `Use ${ingredient.name} soon`,
-      tip: `${ingredient.name} wilts quickly. Use it today in an omelet, rice bowl, or smoothie.`,
-      priority,
-    })
-  }
-
-  switch (ingredient.category) {
-    case 'dairy':
-      tips.push({
-        title: `Check ${ingredient.name} expiration`,
-        tip: `Dairy spoils quickly. Check the date and use ${ingredient.name} in simple recipes like toast, pasta, or smoothies.`,
-        priority,
-      })
-      break
-    case 'fruit':
-      tips.push({
-        title: `Save extra ${ingredient.name}`,
-        tip: `Use ripe fruit in smoothies, or freeze it now for later blends and oatmeal toppings.`,
-        priority,
-      })
-      break
-    case 'vegetable':
-      tips.push({
-        title: `Cook ${ingredient.name} before it softens`,
-        tip: `Vegetables keep longer once cooked. Turn ${ingredient.name} into a stir-fry, soup, or roasted side.`,
-        priority,
-      })
-      break
-    case 'grain':
-      tips.push({
-        title: `Batch-cook ${ingredient.name}`,
-        tip: `Cook a larger grain batch and reuse leftovers for fried rice, grain bowls, or quick lunches.`,
-        priority,
-      })
-      break
-    default:
-      break
-  }
-
-  return tips
+function perishRank(p: ParsedIngredient['perishability']): number {
+  if (p === 'high') return 0
+  if (p === 'medium') return 1
+  return 2
 }
 
 export function generateWasteTips(parsedIngredients: ParsedIngredient[]): WasteTip[] {
@@ -62,22 +18,50 @@ export function generateWasteTips(parsedIngredients: ParsedIngredient[]): WasteT
     return []
   }
 
-  const allTips = parsedIngredients.flatMap((ingredient) => tipForIngredient(ingredient))
+  const sorted = [...parsedIngredients].sort((a, b) => {
+    const ua = a.urgency === 'use soon' ? 0 : 1
+    const ub = b.urgency === 'use soon' ? 0 : 1
+    if (ua !== ub) return ua - ub
+    return perishRank(a.perishability) - perishRank(b.perishability)
+  })
 
-  const deduped = new Map<string, WasteTip>()
-  for (const tip of allTips) {
-    const existing = deduped.get(tip.title)
-    if (!existing || (existing.priority === 'medium' && tip.priority === 'high')) {
-      deduped.set(tip.title, tip)
-    }
-  }
+  const openingsUrgent = [
+    'Time-sensitive — plan a meal soon while texture and flavor hold.',
+    'Sounds urgent — prioritize cooking or freezing today.',
+  ]
+  const openingsPlan = [
+    'Rotate into meals before storage conditions slip.',
+    'Pair storage discipline with one fast serving idea.',
+  ]
 
-  return [...deduped.values()]
-    .sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority === 'high' ? -1 : 1
-      }
-      return a.title.localeCompare(b.title)
+  const tips: WasteTip[] = []
+
+  sorted.forEach((p, index) => {
+    const urgent = p.urgency === 'use soon'
+    const priority: WasteTip['priority'] = urgent ? 'high' : 'medium'
+    const kb = ingredientsById[p.id]
+
+    const storageLine = kb?.storageTip ?? p.storageTip
+    const ideas = p.useIdeas.length ? p.useIdeas : ['Season simply', 'Combine with staples you trust']
+    const idea = ideas[index % ideas.length]
+
+    const opening = urgent
+      ? openingsUrgent[index % openingsUrgent.length]
+      : openingsPlan[index % openingsPlan.length]
+
+    const subs =
+      kb?.substitutions?.length || p.substitutions?.length
+        ? ` Substitutions if needed: ${(kb?.substitutions ?? p.substitutions ?? []).slice(0, 2).join('; ')}.`
+        : ''
+
+    const tip = `${opening} ${storageLine} Quick idea: ${idea}.${subs}`
+
+    tips.push({
+      title: urgent ? `${p.name}: use soon` : `${p.name}: reduce waste`,
+      tip,
+      priority,
     })
-    .slice(0, 6)
+  })
+
+  return tips.slice(0, 8)
 }

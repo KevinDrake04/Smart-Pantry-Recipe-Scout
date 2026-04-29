@@ -1,4 +1,8 @@
 import { sampleRecipes } from '../data/sampleRecipes'
+import {
+  formatIngredientLabel,
+  ingredientsById,
+} from '../data/ingredientKnowledgeBase'
 import type { ParsedIngredient } from './ingredientParser'
 
 export type RecipeSuggestion = {
@@ -21,27 +25,71 @@ const nonCriticalPantryStaples = new Set([
   'water',
   'butter',
   'seasoning',
+  'honey',
+  'sesame seeds',
+  'spices',
 ])
 
 const substitutionMap: Record<string, string> = {
   'soy sauce': 'salt + a small splash of vinegar',
-  garlic: 'garlic powder or onion',
-  milk: 'water or a non-dairy milk',
+  garlic: 'garlic powder, onion, or shallot',
+  onion: 'garlic powder or green onion',
+  milk: 'water, oat milk, or almond milk',
   cheese: 'nutritional yeast or skip it',
+  bread: 'tortilla, rice, or crackers',
+  pasta: 'rice or noodles',
+  rice: 'pasta, quinoa, or bread',
+  spinach: 'lettuce, kale, chard, or mixed salad greens',
+  tomatoes: 'tomato sauce, salsa, paste, or roasted peppers',
+  eggs: 'tofu or beans in a pinch',
+  yogurt: 'milk or cottage cheese, depending on the dish',
+  butter: 'oil or a thin spread of cream cheese',
+  cream: 'milk with a little extra cheese',
+  'cottage cheese': 'yogurt or thick milk',
+  beans: 'canned tuna or extra rice and vegetables',
+  chicken: 'tofu, beans, or extra vegetables',
+  tuna: 'chickpeas or white beans',
+  potatoes: 'extra bread, rice, or pasta for bulk',
+  peppers: 'any firm vegetables you have, or frozen mix',
+  carrots: 'celery, peppers, or another crunchy vegetable',
+  noodles: 'pasta, rice, or thinly sliced vegetables',
+  lettuce: 'cabbage, spinach, or any fresh greens',
+  banana: 'apple, yogurt, or a spoon of nut butter for body',
+  strawberry: 'any frozen or fresh berries',
+  'peanut butter': 'any nut or seed butter, or a little extra banana',
+  tortilla: 'lettuce cups, bread, or a large collard leaf',
+  oats: 'crushed crackers, more fruit, or a second dairy',
+  vinegar: 'lemon or lime juice + a pinch of salt',
+  'olive oil': 'any neutral oil or a small pat of butter',
+  sugar: 'honey, syrup, or a ripe banana for sweetness',
+  flour: 'extra eggs, breadcrumbs, or skip if not essential',
+}
+
+function substitutionLineForMissing(id: string): string | undefined {
+  const label = formatIngredientLabel(id)
+  const manual = substitutionMap[id]
+  if (manual) return `${label}: ${manual}`
+  const kbSub = ingredientsById[id]?.substitutions?.[0]
+  if (kbSub) return `${label}: ${kbSub}`
+  return undefined
+}
+
+function labelsForIds(ids: string[]): string[] {
+  return ids.map((id) => formatIngredientLabel(id))
 }
 
 function buildWhyRecommended(
-  usedIngredients: string[],
-  urgentIngredientNames: Set<string>
+  usedIngredientIds: string[],
+  urgentIngredientIds: Set<string>
 ): string {
-  if (usedIngredients.length === 0) {
+  if (usedIngredientIds.length === 0) {
     return 'Recommended based on your ingredient categories and quick prep.'
   }
 
-  const highlighted = usedIngredients.map((ingredient) =>
-    urgentIngredientNames.has(ingredient)
-      ? `use-soon ${ingredient}`
-      : ingredient
+  const highlighted = usedIngredientIds.map((id) =>
+    urgentIngredientIds.has(id)
+      ? `use-soon ${formatIngredientLabel(id)}`
+      : formatIngredientLabel(id)
   )
 
   const usedText =
@@ -53,41 +101,54 @@ function buildWhyRecommended(
 }
 
 function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): RecipeSuggestion[] {
-  const names = new Set(parsedIngredients.map((item) => item.name))
+  const ids = new Set(parsedIngredients.map((item) => item.id))
   const categories = new Set(parsedIngredients.map((item) => item.category))
   const fallback: RecipeSuggestion[] = []
 
-  if (categories.has('grain') && categories.has('vegetable')) {
+  if (categories.has('grain') && (categories.has('vegetable') || categories.has('legume'))) {
     fallback.push({
       title: 'Pantry Grain Bowl',
       matchPercentage: 60,
-      matchSummary: 'You have a flexible grain + vegetable base.',
-      usedIngredients: parsedIngredients
-        .filter((item) => item.category === 'grain' || item.category === 'vegetable')
-        .map((item) => item.name)
-        .slice(0, 4),
+      matchSummary: 'You have a flexible grain + produce / legume base.',
+      usedIngredients: labelsForIds(
+        parsedIngredients
+          .filter(
+            (item) =>
+              item.category === 'grain' ||
+              item.category === 'vegetable' ||
+              item.category === 'legume'
+          )
+          .map((item) => item.id)
+          .slice(0, 4)
+      ),
       missingIngredients: [],
       substitutions: [],
-      whyRecommended: 'Recommended because your grain and vegetables can become a fast bowl meal.',
+      whyRecommended:
+        'Recommended because your grain and produce can become a fast bowl meal.',
       estimatedTime: '15 min',
       difficulty: 'Easy',
       steps: [
         'Cook or reheat your grain.',
-        'Saute vegetables with any seasoning you like.',
-        'Combine and finish with a simple dressing.',
+        'Warm vegetables or beans in the same pan.',
+        'Combine and season to taste.',
       ],
     })
   }
 
-  if (names.has('eggs') && categories.has('vegetable')) {
+  if (ids.has('eggs') && (categories.has('vegetable') || ids.has('spinach'))) {
     fallback.push({
       title: 'Simple Omelet',
       matchPercentage: 65,
       matchSummary: 'You have the key omelet ingredients.',
-      usedIngredients: parsedIngredients
-        .filter((item) => item.name === 'eggs' || item.category === 'vegetable')
-        .map((item) => item.name)
-        .slice(0, 4),
+      usedIngredients: labelsForIds(
+        parsedIngredients
+          .filter(
+            (item) =>
+              item.id === 'eggs' || item.category === 'vegetable' || item.id === 'spinach'
+          )
+          .map((item) => item.id)
+          .slice(0, 4)
+      ),
       missingIngredients: [],
       substitutions: [],
       whyRecommended: 'Recommended because eggs and vegetables make a quick balanced meal.',
@@ -101,37 +162,36 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
     })
   }
 
-  if (names.has('milk') && categories.has('fruit')) {
+  if (ids.has('milk') && categories.has('fruit')) {
     fallback.push({
       title: 'Quick Smoothie',
       matchPercentage: 70,
       matchSummary: 'You have milk + fruit for a drinkable snack.',
-      usedIngredients: parsedIngredients
-        .filter((item) => item.name === 'milk' || item.category === 'fruit')
-        .map((item) => item.name)
-        .slice(0, 4),
+      usedIngredients: labelsForIds(
+        parsedIngredients
+          .filter((item) => item.id === 'milk' || item.category === 'fruit')
+          .map((item) => item.id)
+          .slice(0, 4)
+      ),
       missingIngredients: [],
       substitutions: [],
       whyRecommended: 'Recommended because milk and fruit blend into a no-cook option.',
       estimatedTime: '5 min',
       difficulty: 'Easy',
-      steps: [
-        'Add milk and fruit to a blender.',
-        'Blend until smooth.',
-        'Serve immediately.',
-      ],
+      steps: ['Add milk and fruit to a blender.', 'Blend until smooth.', 'Serve immediately.'],
     })
   }
 
-  if (names.has('bread') && names.has('cheese')) {
+  if (ids.has('bread') && ids.has('cheese')) {
     fallback.push({
       title: 'Grilled Cheese',
       matchPercentage: 75,
       matchSummary: 'You already have bread and cheese.',
-      usedIngredients: ['bread', 'cheese'],
+      usedIngredients: labelsForIds(['bread', 'cheese']),
       missingIngredients: [],
       substitutions: [],
-      whyRecommended: 'Recommended because bread and cheese are enough for a reliable comfort meal.',
+      whyRecommended:
+        'Recommended because bread and cheese are enough for a reliable comfort meal.',
       estimatedTime: '10 min',
       difficulty: 'Easy',
       steps: [
@@ -142,47 +202,135 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
     })
   }
 
-  return fallback.slice(0, 4)
+  return fallback.slice(0, 6)
+}
+
+function isWeakMatch(
+  matchPercentage: number,
+  usedCount: number,
+  criticalMissingCount: number,
+  totalMain: number
+): boolean {
+  if (totalMain <= 2) {
+    return matchPercentage < 50 && usedCount < totalMain
+  }
+  const lowCoverage = matchPercentage < 38 && usedCount <= 1
+  const tooManyGaps = criticalMissingCount >= 3 && matchPercentage < 55
+  return lowCoverage || tooManyGaps
 }
 
 export function generateRecipeSuggestions(
   parsedIngredients: ParsedIngredient[]
 ): RecipeSuggestion[] {
-  const pantrySet = new Set(parsedIngredients.map((ingredient) => ingredient.name))
-  const urgentIngredientNames = new Set(
+  if (parsedIngredients.length === 0) {
+    return []
+  }
+
+  const pantryIds = new Set(parsedIngredients.map((ingredient) => ingredient.id))
+  const urgentIngredientIds = new Set(
     parsedIngredients
       .filter((ingredient) => ingredient.urgency === 'use soon')
-      .map((ingredient) => ingredient.name)
+      .map((ingredient) => ingredient.id)
   )
 
   const scoredRecipes = sampleRecipes
     .map((recipe) => {
-      const usedIngredients = recipe.requiredIngredients.filter((ingredient) =>
-        pantrySet.has(ingredient)
-      )
-      const missingIngredients = recipe.requiredIngredients.filter(
-        (ingredient) => !pantrySet.has(ingredient)
-      )
-      const criticalMissingCount = missingIngredients.filter(
-        (ingredient) => !nonCriticalPantryStaples.has(ingredient)
+      const mains = recipe.mainIngredients
+      const usedIngredientIds = mains.filter((id) => pantryIds.has(id))
+      const missingIngredientIds = mains.filter((id) => !pantryIds.has(id))
+      const criticalMissingCount = missingIngredientIds.filter(
+        (id) => !nonCriticalPantryStaples.has(id)
       ).length
-      const totalIngredients = recipe.requiredIngredients.length
-      const matchPercentage = Math.round((usedIngredients.length / totalIngredients) * 100)
-      const urgentUsedCount = usedIngredients.filter((ingredient) =>
-        urgentIngredientNames.has(ingredient)
+      const totalMain = mains.length
+      const matchPercentage = Math.round((usedIngredientIds.length / totalMain) * 100)
+      const urgentUsedCount = usedIngredientIds.filter((id) =>
+        urgentIngredientIds.has(id)
       ).length
-      const substitutions = missingIngredients
-        .filter((ingredient) => substitutionMap[ingredient])
-        .map((ingredient) => `${ingredient}: ${substitutionMap[ingredient]}`)
+      const substitutions = missingIngredientIds
+        .map((id) => substitutionLineForMissing(id))
+        .filter((line): line is string => Boolean(line))
 
       return {
         title: recipe.title,
         matchPercentage,
-        matchSummary: `You have ${usedIngredients.length} of ${totalIngredients} main ingredients.`,
-        usedIngredients,
-        missingIngredients,
+        matchSummary: `You have ${usedIngredientIds.length} of ${totalMain} main ingredients.`,
+        usedIngredients: labelsForIds(usedIngredientIds),
+        missingIngredients: labelsForIds(missingIngredientIds),
         substitutions,
-        whyRecommended: buildWhyRecommended(usedIngredients, urgentIngredientNames),
+        whyRecommended: buildWhyRecommended(usedIngredientIds, urgentIngredientIds),
+        estimatedTime: recipe.estimatedTime,
+        difficulty: recipe.difficulty,
+        steps: recipe.steps,
+        criticalMissingCount,
+        urgentUsedCount,
+        totalMain,
+      }
+    })
+    .filter((recipe) => recipe.usedIngredients.length > 0)
+    .filter(
+      (recipe) =>
+        !isWeakMatch(
+          recipe.matchPercentage,
+          recipe.usedIngredients.length,
+          recipe.criticalMissingCount,
+          recipe.totalMain
+        )
+    )
+    .sort((a, b) => {
+      if (a.criticalMissingCount !== b.criticalMissingCount) {
+        return a.criticalMissingCount - b.criticalMissingCount
+      }
+      if (a.usedIngredients.length !== b.usedIngredients.length) {
+        return b.usedIngredients.length - a.usedIngredients.length
+      }
+      if (b.urgentUsedCount !== a.urgentUsedCount) {
+        return b.urgentUsedCount - a.urgentUsedCount
+      }
+      return b.matchPercentage - a.matchPercentage
+    })
+
+  const topSuggestions = scoredRecipes.slice(0, 6).map(
+    ({
+      criticalMissingCount: _c,
+      urgentUsedCount: _u,
+      totalMain: _t,
+      ...recipe
+    }) => recipe
+  )
+
+  if (topSuggestions.length > 0) {
+    return topSuggestions
+  }
+
+  const fallbackSuggestions = createFallbackSuggestions(parsedIngredients)
+  if (fallbackSuggestions.length > 0) {
+    return fallbackSuggestions.slice(0, 6)
+  }
+
+  const loose = sampleRecipes
+    .map((recipe) => {
+      const mains = recipe.mainIngredients
+      const usedIngredientIds = mains.filter((id) => pantryIds.has(id))
+      const missingIngredientIds = mains.filter((id) => !pantryIds.has(id))
+      const criticalMissingCount = missingIngredientIds.filter(
+        (id) => !nonCriticalPantryStaples.has(id)
+      ).length
+      const totalMain = mains.length
+      const matchPercentage = Math.round((usedIngredientIds.length / totalMain) * 100)
+      const urgentUsedCount = usedIngredientIds.filter((id) =>
+        urgentIngredientIds.has(id)
+      ).length
+      const substitutions = missingIngredientIds
+        .map((id) => substitutionLineForMissing(id))
+        .filter((line): line is string => Boolean(line))
+      return {
+        title: recipe.title,
+        matchPercentage,
+        matchSummary: `You have ${usedIngredientIds.length} of ${totalMain} main ingredients.`,
+        usedIngredients: labelsForIds(usedIngredientIds),
+        missingIngredients: labelsForIds(missingIngredientIds),
+        substitutions,
+        whyRecommended: buildWhyRecommended(usedIngredientIds, urgentIngredientIds),
         estimatedTime: recipe.estimatedTime,
         difficulty: recipe.difficulty,
         steps: recipe.steps,
@@ -195,27 +343,9 @@ export function generateRecipeSuggestions(
       if (a.criticalMissingCount !== b.criticalMissingCount) {
         return a.criticalMissingCount - b.criticalMissingCount
       }
-      if (a.usedIngredients.length !== b.usedIngredients.length) {
-        return b.usedIngredients.length - a.usedIngredients.length
-      }
-      return b.urgentUsedCount - a.urgentUsedCount
+      return b.usedIngredients.length - a.usedIngredients.length
     })
+    .slice(0, 6)
 
-  const strongMatches = scoredRecipes
-    .filter((recipe) => recipe.matchPercentage >= 50 || recipe.usedIngredients.length >= 2)
-    .slice(0, 4)
-    .map(({ criticalMissingCount: _criticalMissingCount, urgentUsedCount: _urgentUsedCount, ...recipe }) => recipe)
-
-  if (strongMatches.length > 0) {
-    return strongMatches.slice(0, Math.max(2, Math.min(4, strongMatches.length)))
-  }
-
-  const fallbackSuggestions = createFallbackSuggestions(parsedIngredients)
-  if (fallbackSuggestions.length > 0) {
-    return fallbackSuggestions.slice(0, Math.max(2, Math.min(4, fallbackSuggestions.length)))
-  }
-
-  return scoredRecipes
-    .slice(0, 2)
-    .map(({ criticalMissingCount: _criticalMissingCount, urgentUsedCount: _urgentUsedCount, ...recipe }) => recipe)
+  return loose.map(({ criticalMissingCount: _c, urgentUsedCount: _u, ...recipe }) => recipe)
 }
