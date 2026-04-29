@@ -189,35 +189,37 @@ function App() {
                 Pantry setup
               </h2>
               <p className="text-xs leading-snug text-slate-500 sm:text-sm">
-                Enter ingredients, optionally pull from simulated fridge presets, quick-add staples,
-                then run Find Recipes. Results appear below once submitted.
+                Use simulated fridge or quick-add above your list, then edit the pantry field below
+                and run Find Recipes. Results appear underneath once submitted.
               </p>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
-            <div className="grid gap-4 lg:grid-cols-12 lg:gap-6">
-              <div className="order-1 min-w-0 lg:col-span-7 xl:col-span-8">
-                <IngredientInput
-                  embedded
-                  value={ingredientText}
-                  onChange={setIngredientText}
-                  onSubmit={handleSubmit}
-                  onClearPantry={handleClearPantry}
-                />
-                {hasSubmitted && (
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-snug text-slate-600">
-                    <span className="font-semibold text-slate-700">Submitted:</span>{' '}
-                    {submittedIngredients}
-                  </div>
-                )}
-              </div>
-              <div className="order-2 flex min-w-0 flex-col gap-3 lg:col-span-5 xl:col-span-4">
+          <CardContent className="space-y-3 px-4 py-4 sm:px-5 sm:py-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              <div className="min-w-0">
                 <SimulatedImageInput
                   onSelectIngredients={setIngredientText}
                   selectedIngredients={ingredientText}
                 />
+              </div>
+              <div className="min-w-0">
                 <IngredientPicker value={ingredientText} onChange={setIngredientText} />
               </div>
+            </div>
+            <div className="rounded-xl border border-blue-200/70 bg-gradient-to-b from-white to-slate-50/90 p-3 shadow-sm ring-1 ring-blue-100/80 sm:p-4">
+              <IngredientInput
+                embedded
+                value={ingredientText}
+                onChange={setIngredientText}
+                onSubmit={handleSubmit}
+                onClearPantry={handleClearPantry}
+              />
+              {hasSubmitted && (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-xs leading-snug text-slate-600">
+                  <span className="font-semibold text-slate-700">Submitted:</span>{' '}
+                  {submittedIngredients}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
