@@ -50,5 +50,18 @@ export type RecipeDef = {
   cuisineStyle: CuisineStyle
   estimatedTime: string
   difficulty: RecipeDifficulty
+  /**
+   * Optional metadata for showing a “View source” link in the UI.
+   * Stored from RecipeNLG curation when available.
+   */
+  sourceUrl?: string
+  /**
+   * Optional display name for the source (e.g. RecipeNLG `source` field).
+   */
+  sourceName?: string
+  /**
+   * Whether `steps` come from cleaned dataset directions or from generated fallback templates.
+   */
+  stepsSource?: 'dataset' | 'generated'
   steps: string[]
 }

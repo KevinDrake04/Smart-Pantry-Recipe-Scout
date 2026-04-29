@@ -9,8 +9,11 @@ import {
 } from '../data/ingredientKnowledgeBase'
 import type { ParsedIngredient } from './ingredientParser'
 
-/** How many scored suggestions to pass to the UI for search/cuisine filtering (not all catalog recipes). */
-export const RECIPE_SUGGESTION_POOL_SIZE = 48
+/**
+ * Ranked recipe pool size.
+ * This limits how many scored suggestions the UI can filter/paginate to keep runtime + rendering fast.
+ */
+export const MAX_RECIPE_SUGGESTIONS = 100000
 
 const recipeCatalog: RecipeDef[] = [...sampleRecipes, ...curatedRecipes]
 
@@ -25,6 +28,11 @@ export type RecipeSuggestion = {
   estimatedTime: string
   difficulty: string
   steps: string[]
+  /** Optional metadata for showing a small “View source” link. */
+  sourceUrl?: string
+  sourceName?: string
+  /** Whether steps are cleaned RecipeNLG directions or generated fallback templates. */
+  stepsSource: 'dataset' | 'generated'
   /** Curated cuisine / meal style from recipe data (never blank in normal use). */
   cuisineStyle: CuisineStyle
 }
@@ -154,6 +162,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
         'Warm vegetables or beans in the same pan.',
         'Combine and season to taste.',
       ],
+      stepsSource: 'generated',
     })
   }
 
@@ -183,6 +192,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
         'Cook chopped vegetables briefly.',
         'Add eggs and fold when set.',
       ],
+      stepsSource: 'generated',
     })
   }
 
@@ -205,6 +215,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
       estimatedTime: '5 min',
       difficulty: 'Easy',
       steps: ['Add milk and fruit to a blender.', 'Blend until smooth.', 'Serve immediately.'],
+      stepsSource: 'generated',
     })
   }
 
@@ -226,6 +237,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
         'Grill both sides until golden.',
         'Serve hot.',
       ],
+      stepsSource: 'generated',
     })
   }
 
@@ -258,6 +270,9 @@ type Scored = {
   estimatedTime: string
   difficulty: string
   steps: string[]
+  sourceUrl?: string
+  sourceName?: string
+  stepsSource: 'dataset' | 'generated'
   criticalMissingCount: number
   urgentUsedCount: number
   meaningfulTotalMain: number
@@ -277,6 +292,9 @@ function toSuggestion(r: Scored): RecipeSuggestion {
     estimatedTime: r.estimatedTime,
     difficulty: r.difficulty,
     steps: r.steps,
+    sourceUrl: r.sourceUrl,
+    sourceName: r.sourceName,
+    stepsSource: r.stepsSource,
   }
 }
 
@@ -329,6 +347,9 @@ function scoreRecipe(
     estimatedTime: recipe.estimatedTime,
     difficulty: recipe.difficulty,
     steps: recipe.steps,
+    sourceUrl: recipe.sourceUrl,
+    sourceName: recipe.sourceName,
+    stepsSource: recipe.stepsSource ?? 'generated',
     criticalMissingCount,
     urgentUsedCount,
     meaningfulTotalMain: meaningfulMains.length,
@@ -383,7 +404,7 @@ export function generateRecipeSuggestions(
     })
 
   const topSuggestions = scoredRecipes
-    .slice(0, RECIPE_SUGGESTION_POOL_SIZE)
+    .slice(0, MAX_RECIPE_SUGGESTIONS)
     .map(toSuggestion)
 
   if (topSuggestions.length > 0) {
@@ -405,7 +426,7 @@ export function generateRecipeSuggestions(
       }
       return b.meaningfulUsedCount - a.meaningfulUsedCount
     })
-    .slice(0, RECIPE_SUGGESTION_POOL_SIZE)
+    .slice(0, MAX_RECIPE_SUGGESTIONS)
 
   return loose.map(toSuggestion)
 }

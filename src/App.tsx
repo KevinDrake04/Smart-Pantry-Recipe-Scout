@@ -35,7 +35,16 @@ const RECIPES_PER_PAGE = 6
 /** Show individual page buttons when there are at most this many pages. */
 const MAX_PAGE_BUTTONS = 7
 
+const DEFAULT_MIN_MATCH_PERCENT = 50
+
 type ResultsTabKey = 'recipes' | 'parsed' | 'waste'
+
+function matchToPercent(match: number): number {
+  // Some pipelines store match as a fraction (0..1), others as percent (0..100).
+  // Slider is percent-based.
+  const pct = match <= 1 ? match * 100 : match
+  return Math.min(100, Math.max(0, pct))
+}
 
 function App() {
   const [ingredientText, setIngredientText] = useState(() => {
@@ -58,6 +67,9 @@ function App() {
   const [recipeCuisineFilter, setRecipeCuisineFilter] = useState('all')
   const [resultsTab, setResultsTab] = useState<ResultsTabKey>('recipes')
   const [recipePage, setRecipePage] = useState(1)
+  const [recipeMinMatchPercent, setRecipeMinMatchPercent] = useState(
+    DEFAULT_MIN_MATCH_PERCENT
+  )
 
   const cuisineSelectItems = useMemo(
     () => buildOrderedCuisineFilterOptions(recipeSuggestions),
@@ -71,15 +83,21 @@ function App() {
       : 'all'
   }, [recipeCuisineFilter, cuisineSelectItems])
 
-  const filteredSuggestions = useMemo(
-    () =>
-      filterRecipeSuggestions(
-        recipeSuggestions,
-        recipeSearch,
-        effectiveRecipeCuisineFilter
-      ),
-    [recipeSuggestions, recipeSearch, effectiveRecipeCuisineFilter]
-  )
+  const filteredSuggestions = useMemo(() => {
+    const searchedAndCuisine = filterRecipeSuggestions(
+      recipeSuggestions,
+      recipeSearch,
+      effectiveRecipeCuisineFilter
+    )
+    return searchedAndCuisine.filter(
+      (r) => matchToPercent(r.matchPercentage) >= recipeMinMatchPercent
+    )
+  }, [
+    recipeSuggestions,
+    recipeSearch,
+    effectiveRecipeCuisineFilter,
+    recipeMinMatchPercent,
+  ])
 
   const totalPages = useMemo(() => {
     const n = filteredSuggestions.length
@@ -141,6 +159,7 @@ function App() {
     setWasteTips(generateWasteTips(parsed))
     setRecipeSearch('')
     setRecipeCuisineFilter('all')
+    setRecipeMinMatchPercent(DEFAULT_MIN_MATCH_PERCENT)
     setRecipePage(1)
   }
 
@@ -157,6 +176,7 @@ function App() {
     setWasteTips([])
     setRecipeSearch('')
     setRecipeCuisineFilter('all')
+    setRecipeMinMatchPercent(DEFAULT_MIN_MATCH_PERCENT)
     setRecipePage(1)
     setResultsTab('recipes')
   }
@@ -321,6 +341,38 @@ function App() {
                             ))}
                           </select>
                         </div>
+                        <div className="relative z-[2] w-full sm:w-[220px]">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <Label className="text-xs font-medium text-slate-600">
+                              Min match
+                            </Label>
+                            <span className="text-[11px] font-semibold text-slate-700 tabular-nums">
+                              {recipeMinMatchPercent}%+
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {[25, 50, 75, 90].map((pct) => (
+                              <Button
+                                key={pct}
+                                type="button"
+                                size="sm"
+                                variant={recipeMinMatchPercent === pct ? 'primary' : 'secondary'}
+                                className="h-8 min-w-[3.1rem] rounded-lg px-2 py-0 text-xs font-semibold"
+                                onPress={() => {
+                                  setRecipeMinMatchPercent(pct)
+                                  setRecipePage(1)
+                                }}
+                              >
+                                {pct}%+
+                              </Button>
+                            ))}
+                          </div>
+
+                          <p className="mt-1 text-[11px] leading-snug text-slate-400">
+                            Lower this to see more recipe ideas.
+                          </p>
+                        </div>
                         {hasRecipeFilterActive && (
                           <Button
                             type="button"
@@ -335,15 +387,15 @@ function App() {
                       </div>
                       {filteredSuggestions.length === 0 ? (
                         <p className="text-sm leading-snug text-slate-600">
-                          No recipes match those filters. Try clearing the search or choosing All
-                          cuisines / styles.
+                          No recipes match those filters. Try lowering Minimum match or clearing
+                          the search / cuisine filters.
                         </p>
                       ) : (
                         <>
                         <div className="grid gap-3 md:grid-cols-2">
                           {paginatedSuggestions.map((recipe, index) => (
                             <Card
-                              key={`${recipe.title}-${displayCuisine(recipe)}-${recipe.matchPercentage}-${(effectivePage - 1) * RECIPES_PER_PAGE + index}`}
+                              key={`${recipe.title}-${displayCuisine(recipe)}-${Math.round(matchToPercent(recipe.matchPercentage))}-${(effectivePage - 1) * RECIPES_PER_PAGE + index}`}
                               className="rounded-xl border border-slate-200 bg-white shadow-sm"
                             >
                               <CardContent className="space-y-2 p-3 sm:p-3.5">
@@ -354,19 +406,37 @@ function App() {
                                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                                     <Chip
                                       size="sm"
-                                      color={recipe.matchPercentage >= 70 ? 'success' : 'accent'}
+                                      color={
+                                        matchToPercent(recipe.matchPercentage) >= 70
+                                          ? 'success'
+                                          : 'accent'
+                                      }
                                       variant="soft"
                                     >
-                                      {recipe.matchPercentage}%
+                                      {Math.round(matchToPercent(recipe.matchPercentage))}%
                                     </Chip>
                                     <Chip size="sm" variant="soft" color="default">
                                       {displayCuisine(recipe)}
                                     </Chip>
+                                    {recipe.sourceUrl && (
+                                      <a
+                                        href={recipe.sourceUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center rounded-full px-2 py-1 text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                                      >
+                                        View source
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
                                 <ProgressBar
-                                  value={recipe.matchPercentage}
-                                  color={recipe.matchPercentage >= 70 ? 'success' : 'accent'}
+                                  value={Math.round(matchToPercent(recipe.matchPercentage))}
+                                  color={
+                                    matchToPercent(recipe.matchPercentage) >= 70
+                                      ? 'success'
+                                      : 'accent'
+                                  }
                                   aria-label={`${recipe.title} match`}
                                 />
                                 <p className="text-xs leading-snug text-slate-600">
@@ -397,7 +467,12 @@ function App() {
                                   {recipe.difficulty}
                                 </p>
                                 <p className="text-xs leading-snug text-slate-600">
-                                  <span className="font-medium">Steps:</span>{' '}
+                                  <span className="font-medium">
+                                    {recipe.stepsSource === 'dataset'
+                                      ? 'Recipe steps'
+                                      : 'Suggested steps'}
+                                    :
+                                  </span>{' '}
                                   {recipe.steps.join(' ')}
                                 </p>
                               </CardContent>

@@ -155,6 +155,96 @@ function runAudit(): void {
   console.log('\n--- KB ingredients with zero recipe support ---')
   console.log(`Count: ${kbZeroSupport.length}`)
   for (const id of kbZeroSupport) console.warn(`No recipe support: ${id}`)
+
+  // ---------------------------------------------------------------------------
+  // Source URL sanity checks (broken/blocked sources)
+  // ---------------------------------------------------------------------------
+  const withSourceUrl = catalog.filter((r) => Boolean((r as { sourceUrl?: string }).sourceUrl))
+    .length
+  const withoutSourceUrl = catalog.length - withSourceUrl
+
+  console.log('\n--- Source URL coverage ---')
+  console.log(`  recipes with sourceUrl: ${withSourceUrl}`)
+  console.log(`  recipes without sourceUrl: ${withoutSourceUrl}`)
+
+  const sourceNameCounts = new Map<string, number>()
+  for (const recipe of catalog) {
+    const sn = (recipe as { sourceName?: string }).sourceName
+    if (!sn) continue
+    bump(sourceNameCounts, sn)
+  }
+
+  console.log('\n--- Top sourceName values ---')
+  const topSources = topN(sourceNameCounts, 10)
+  if (topSources.length === 0) {
+    console.log('  (none)')
+  } else {
+    for (const [name, n] of topSources) {
+      console.log(`  ${name}: ${n}`)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Step quality + data-vs-generated checks
+  // ---------------------------------------------------------------------------
+  const stepSourceCounts = { dataset: 0, generated: 0 }
+  let recipesWithTooFewSteps = 0
+  let recipesWithDuplicateSteps = 0
+
+  const normalizeStep = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  for (const recipe of catalog) {
+    const stepsSource = (recipe.stepsSource ?? 'generated') as 'dataset' | 'generated'
+    if (stepsSource === 'dataset') stepSourceCounts.dataset++
+    else stepSourceCounts.generated++
+
+    if (recipe.steps.length < 3) recipesWithTooFewSteps++
+
+    const seen = new Set<string>()
+    let hasDup = false
+    for (const s of recipe.steps) {
+      const k = normalizeStep(s)
+      if (!k) continue
+      if (seen.has(k)) {
+        hasDup = true
+        break
+      }
+      seen.add(k)
+    }
+    if (hasDup) recipesWithDuplicateSteps++
+  }
+
+  console.log('\n--- Step source counts ---')
+  console.log(`  dataset directions: ${stepSourceCounts.dataset}`)
+  console.log(`  generated fallback: ${stepSourceCounts.generated}`)
+  if (recipesWithTooFewSteps > 0) {
+    console.warn(`\nWarning: ${recipesWithTooFewSteps} recipes have < 3 steps`)
+  }
+  if (recipesWithDuplicateSteps > 0) {
+    console.warn(`\nWarning: ${recipesWithDuplicateSteps} recipes contain duplicate steps`)
+  }
+
+  console.log('\n--- Sample recipe steps (10) ---')
+  const sample = catalog
+    .filter((r) => (r.stepsSource ?? 'generated') !== 'dataset')
+    .slice(0, 10)
+
+  for (const r of sample) {
+    const stepsSource = r.stepsSource ?? 'generated'
+    const hasSourceUrl = Boolean(
+      (r as { sourceUrl?: string }).sourceUrl
+    )
+    const stepsPreview = r.steps.join(' | ')
+    console.log(
+      `- ${r.title} [${r.cuisineStyle}] main=${r.mainIngredients.join(', ')} stepsSource=${stepsSource} sourceUrl=${hasSourceUrl}`
+    )
+    console.log(`  steps: ${stepsPreview}`)
+  }
 }
 
 runAudit()
