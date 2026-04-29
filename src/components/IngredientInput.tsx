@@ -6,6 +6,8 @@ type IngredientInputProps = {
   onChange: (value: string) => void
   onSubmit: () => void
   onClearPantry?: () => void
+  /** When true, omit outer card chrome for embedding inside a parent Card. */
+  embedded?: boolean
 }
 
 function IngredientInput({
@@ -13,9 +15,14 @@ function IngredientInput({
   onChange,
   onSubmit,
   onClearPantry,
+  embedded = false,
 }: IngredientInputProps) {
+  const shellClass = embedded
+    ? 'space-y-3'
+    : 'space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm'
+
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className={shellClass}>
       <div className="space-y-1.5">
         <label
           htmlFor="ingredient-textarea"

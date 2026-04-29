@@ -6,6 +6,7 @@ export type SampleRecipe = RecipeDef
 export const sampleRecipes: SampleRecipe[] = [
   {
     title: 'Egg Fried Rice',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['eggs', 'rice', 'onion'],
     optionalStaples: ['soy sauce', 'oil', 'salt', 'black-pepper'],
     tags: ['egg dishes', 'rice bowls', 'leftovers-focused meals'],
@@ -19,6 +20,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Simple Scrambled Eggs',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['eggs'],
     optionalStaples: ['butter', 'milk', 'salt', 'black-pepper'],
     tags: ['egg dishes', 'breakfast meals'],
@@ -32,6 +34,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Garden Veggie Omelet',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['eggs', 'spinach', 'onion', 'cheese'],
     optionalStaples: ['salt', 'black-pepper'],
     tags: ['egg dishes', 'quick vegetable meals', 'breakfast meals'],
@@ -45,6 +48,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Weeknight Tomato Pasta',
+    cuisineStyle: 'Italian',
     mainIngredients: ['pasta', 'tomatoes', 'onion', 'garlic'],
     optionalStaples: ['oil', 'salt', 'black-pepper'],
     tags: ['pasta dishes', 'quick vegetable meals'],
@@ -58,6 +62,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Quick Tomato Pasta',
+    cuisineStyle: 'Pasta',
     mainIngredients: ['pasta', 'tomatoes'],
     optionalStaples: ['onion', 'garlic', 'oil', 'salt', 'black-pepper', 'tomato sauce'],
     tags: ['pasta dishes', 'pantry staples'],
@@ -71,6 +76,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Classic Grilled Cheese',
+    cuisineStyle: 'Sandwich',
     mainIngredients: ['cheese', 'bread', 'butter'],
     optionalStaples: ['salt'],
     tags: ['sandwiches', 'toast meals'],
@@ -84,6 +90,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tomato Grilled Cheese',
+    cuisineStyle: 'Sandwich',
     mainIngredients: ['bread', 'cheese', 'tomatoes', 'butter'],
     optionalStaples: ['black-pepper'],
     tags: ['sandwiches', 'toast meals', 'quick vegetable meals'],
@@ -97,6 +104,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Peanut Butter Banana Toast',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['bread', 'peanut butter', 'banana'],
     tags: ['toast meals', 'breakfast meals'],
     estimatedTime: '5 min',
@@ -109,6 +117,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Banana Milk Smoothie',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['milk', 'banana'],
     optionalStaples: ['honey', 'cinnamon'],
     tags: ['smoothies', 'breakfast meals'],
@@ -122,6 +131,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Berry Smoothie',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['milk', 'strawberry', 'banana'],
     optionalStaples: ['yogurt', 'honey'],
     tags: ['smoothies', 'breakfast meals'],
@@ -135,6 +145,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Rice and Bean Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['rice', 'beans', 'onion'],
     optionalStaples: ['cheese', 'oil', 'salsa'],
     tags: ['rice bowls', 'bean meals', 'leftovers-focused meals'],
@@ -148,6 +159,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Black Bean Rice Bowl',
+    cuisineStyle: 'Mexican',
     mainIngredients: ['black beans', 'rice', 'onion'],
     optionalStaples: ['salsa', 'cumin', 'lime'],
     tags: ['rice bowls', 'bean meals'],
@@ -161,6 +173,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Salsa Rice Bowl',
+    cuisineStyle: 'Mexican',
     mainIngredients: ['rice', 'salsa', 'beans'],
     optionalStaples: ['cheese', 'sour cream'],
     tags: ['rice bowls', 'leftovers-focused meals'],
@@ -174,6 +187,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tomato Rice Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['rice', 'tomatoes', 'onion'],
     optionalStaples: ['oil', 'salt', 'black-pepper'],
     tags: ['rice bowls', 'quick vegetable meals'],
@@ -187,6 +201,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Simple Vegetable Soup',
+    cuisineStyle: 'Soup',
     mainIngredients: ['potatoes', 'onion', 'carrots', 'tomatoes'],
     optionalStaples: ['salt', 'oil', 'broth'],
     tags: ['soups', 'quick vegetable meals'],
@@ -200,6 +215,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Spinach Scrambled Eggs',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['eggs', 'spinach', 'butter'],
     optionalStaples: ['salt', 'black-pepper'],
     tags: ['egg dishes', 'breakfast meals', 'quick vegetable meals'],
@@ -213,6 +229,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Cheese Quesadilla',
+    cuisineStyle: 'Mexican',
     mainIngredients: ['tortilla', 'cheese'],
     optionalStaples: ['butter', 'salsa'],
     tags: ['wraps', 'quick vegetable meals'],
@@ -226,6 +243,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Bell Pepper Quesadilla',
+    cuisineStyle: 'Mexican',
     mainIngredients: ['tortilla', 'cheese', 'bell-peppers', 'onion'],
     optionalStaples: ['oil', 'salsa'],
     tags: ['wraps', 'quick vegetable meals'],
@@ -239,6 +257,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Bean and Cheese Burrito',
+    cuisineStyle: 'Mexican',
     mainIngredients: ['beans', 'cheese', 'tortilla'],
     optionalStaples: ['rice', 'salsa', 'sour cream'],
     tags: ['wraps', 'bean meals'],
@@ -252,6 +271,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Pantry Olive Oil Pasta',
+    cuisineStyle: 'Pasta',
     mainIngredients: ['pasta', 'garlic', 'oil'],
     optionalStaples: ['salt', 'black-pepper', 'cheese'],
     tags: ['pasta dishes', 'pantry staples'],
@@ -265,6 +285,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Creamy Cheese Pasta',
+    cuisineStyle: 'Pasta',
     mainIngredients: ['pasta', 'milk', 'cheese'],
     optionalStaples: ['butter', 'salt', 'black-pepper'],
     tags: ['pasta dishes'],
@@ -278,6 +299,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Mushroom Pasta',
+    cuisineStyle: 'Pasta',
     mainIngredients: ['pasta', 'mushrooms', 'garlic'],
     optionalStaples: ['oil', 'salt', 'black-pepper', 'cream cheese'],
     tags: ['pasta dishes', 'quick vegetable meals'],
@@ -291,6 +313,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Garlic Butter Noodles',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['noodles', 'garlic', 'butter'],
     optionalStaples: ['soy sauce', 'sesame seeds'],
     tags: ['noodle dishes'],
@@ -304,6 +327,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tomato Egg Skillet',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['eggs', 'tomatoes', 'onion'],
     optionalStaples: ['oil', 'salt'],
     tags: ['egg dishes', 'quick vegetable meals'],
@@ -317,6 +341,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Leftover Rice Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['rice', 'eggs', 'carrots'],
     optionalStaples: ['soy sauce', 'oil', 'green onion'],
     tags: ['rice bowls', 'leftovers-focused meals'],
@@ -330,6 +355,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Rice and Eggs Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['rice', 'eggs'],
     optionalStaples: ['soy sauce', 'green onion', 'sesame seeds'],
     tags: ['rice bowls', 'egg dishes', 'leftovers-focused meals'],
@@ -343,6 +369,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Savory Breakfast Toast',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['bread', 'eggs', 'cheese'],
     optionalStaples: ['butter'],
     tags: ['toast meals', 'breakfast meals'],
@@ -356,6 +383,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Avocado Toast',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['bread', 'avocado'],
     optionalStaples: ['eggs', 'salt', 'black-pepper', 'lemon'],
     tags: ['toast meals', 'breakfast meals'],
@@ -369,6 +397,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Simple Garden Salad',
+    cuisineStyle: 'Salad',
     mainIngredients: ['lettuce', 'tomatoes', 'cucumber'],
     optionalStaples: ['oil', 'vinegar', 'salt', 'black-pepper'],
     tags: ['salads'],
@@ -382,6 +411,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Cucumber Tomato Salad',
+    cuisineStyle: 'Salad',
     mainIngredients: ['cucumber', 'tomatoes', 'onion'],
     optionalStaples: ['vinegar', 'oil', 'salt'],
     tags: ['salads', 'quick vegetable meals'],
@@ -395,6 +425,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Simple Salad Bowl',
+    cuisineStyle: 'Salad',
     mainIngredients: ['lettuce', 'tomatoes', 'cheese'],
     optionalStaples: ['oil', 'vinegar', 'salt'],
     tags: ['salads', 'quick vegetable meals'],
@@ -408,6 +439,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tuna Rice Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['tuna', 'rice'],
     optionalStaples: ['soy sauce', 'sesame seeds', 'oil'],
     tags: ['rice bowls', 'leftovers-focused meals'],
@@ -421,6 +453,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Chicken Spinach Rice Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['chicken', 'rice', 'spinach'],
     optionalStaples: ['garlic', 'oil', 'salt'],
     tags: ['rice bowls', 'quick vegetable meals'],
@@ -434,6 +467,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Broccoli Rice Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['broccoli', 'rice', 'chicken'],
     optionalStaples: ['soy sauce', 'garlic', 'oil'],
     tags: ['rice bowls', 'quick vegetable meals'],
@@ -447,6 +481,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Sweet Potato Bowl',
+    cuisineStyle: 'Rice Bowl',
     mainIngredients: ['sweet potatoes', 'black beans'],
     optionalStaples: ['salsa', 'yogurt', 'cumin'],
     tags: ['potato meals', 'bean meals'],
@@ -460,6 +495,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Bean and Cheese Wrap',
+    cuisineStyle: 'Mexican',
     mainIngredients: ['beans', 'cheese', 'tortilla'],
     optionalStaples: ['salsa'],
     tags: ['wraps', 'bean meals'],
@@ -473,6 +509,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Chickpea Salad Wrap',
+    cuisineStyle: 'Mediterranean',
     mainIngredients: ['chickpeas', 'lettuce', 'tortilla'],
     optionalStaples: ['yogurt', 'lemon', 'cumin'],
     tags: ['wraps', 'salads', 'bean meals'],
@@ -486,6 +523,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Quick Vegetable Stir Fry',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['bell-peppers', 'onion', 'rice'],
     optionalStaples: ['soy sauce', 'oil', 'garlic'],
     tags: ['quick vegetable meals', 'rice bowls'],
@@ -499,6 +537,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tofu Stir Fry',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['tofu', 'bell-peppers', 'rice'],
     optionalStaples: ['soy sauce', 'garlic', 'oil'],
     tags: ['quick vegetable meals', 'rice bowls'],
@@ -512,6 +551,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Veggie Stir Fry',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['broccoli', 'mushrooms', 'bell-peppers', 'rice'],
     optionalStaples: ['soy sauce', 'garlic', 'oil'],
     tags: ['quick vegetable meals', 'rice bowls'],
@@ -525,6 +565,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Turkey Sandwich',
+    cuisineStyle: 'Sandwich',
     mainIngredients: ['turkey', 'bread', 'lettuce'],
     optionalStaples: ['mayonnaise', 'mustard', 'tomatoes'],
     tags: ['sandwiches'],
@@ -538,6 +579,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tuna Melt Toast',
+    cuisineStyle: 'Sandwich',
     mainIngredients: ['tuna', 'bread', 'cheese'],
     optionalStaples: ['butter', 'mayonnaise'],
     tags: ['sandwiches', 'toast meals'],
@@ -551,6 +593,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Chicken Noodle Soup',
+    cuisineStyle: 'Soup',
     mainIngredients: ['chicken', 'noodles', 'carrots'],
     optionalStaples: ['broth', 'celery', 'onion', 'salt'],
     tags: ['soups'],
@@ -564,6 +607,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Tomato Soup',
+    cuisineStyle: 'Soup',
     mainIngredients: ['tomatoes', 'onion'],
     optionalStaples: ['broth', 'milk', 'oil', 'salt'],
     tags: ['soups'],
@@ -577,6 +621,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Potato Soup',
+    cuisineStyle: 'Soup',
     mainIngredients: ['potatoes', 'onion'],
     optionalStaples: ['broth', 'milk', 'salt', 'black-pepper'],
     tags: ['soups', 'potato meals'],
@@ -590,6 +635,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Lentil Soup',
+    cuisineStyle: 'Soup',
     mainIngredients: ['lentils', 'carrots', 'onion'],
     optionalStaples: ['broth', 'cumin', 'tomatoes'],
     tags: ['soups', 'bean meals'],
@@ -603,6 +649,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Loaded Baked Potato',
+    cuisineStyle: 'American',
     mainIngredients: ['potatoes', 'cheese', 'sour cream'],
     optionalStaples: ['bacon', 'green onion', 'butter', 'salt'],
     tags: ['potato meals'],
@@ -616,6 +663,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Breakfast Potato Hash',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['potatoes', 'onion', 'eggs'],
     optionalStaples: ['oil', 'salt', 'black-pepper'],
     tags: ['potato meals', 'egg dishes', 'breakfast meals'],
@@ -629,6 +677,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Potato Onion Hash with Eggs',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['potatoes', 'onion', 'eggs'],
     optionalStaples: ['oil', 'salt'],
     tags: ['egg dishes', 'breakfast meals', 'potato meals'],
@@ -642,6 +691,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Speedy Tomato Soup',
+    cuisineStyle: 'Soup',
     mainIngredients: ['tomatoes', 'onion', 'carrots'],
     optionalStaples: ['milk', 'oil', 'salt'],
     tags: ['soups'],
@@ -655,6 +705,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Banana Oat Breakfast',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['oats', 'milk', 'banana'],
     optionalStaples: ['honey', 'cinnamon'],
     tags: ['breakfast bowls', 'breakfast meals'],
@@ -668,6 +719,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Yogurt Fruit Bowl',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['yogurt', 'banana', 'strawberry'],
     optionalStaples: ['honey', 'oats'],
     tags: ['breakfast bowls', 'smoothies'],
@@ -681,6 +733,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Cereal with Fruit',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['cereal', 'milk', 'banana'],
     optionalStaples: ['blueberries', 'strawberry', 'honey'],
     tags: ['breakfast bowls', 'breakfast meals'],
@@ -694,6 +747,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Garlic Noodle Bowl',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['noodles', 'garlic', 'soy sauce'],
     optionalStaples: ['oil', 'sesame seeds'],
     tags: ['noodle dishes'],
@@ -707,6 +761,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Spinach Tomato Chickpea Skillet',
+    cuisineStyle: 'Mediterranean',
     mainIngredients: ['chickpeas', 'spinach', 'tomatoes'],
     optionalStaples: ['garlic', 'oil'],
     tags: ['quick vegetable meals', 'bean meals'],
@@ -720,6 +775,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Chicken Lettuce Wraps',
+    cuisineStyle: 'Chinese',
     mainIngredients: ['chicken', 'lettuce', 'soy sauce'],
     optionalStaples: ['garlic', 'oil'],
     tags: ['salads', 'quick vegetable meals'],
@@ -733,6 +789,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Cheesy Baked Potato Halves',
+    cuisineStyle: 'American',
     mainIngredients: ['potatoes', 'cheese', 'butter'],
     optionalStaples: ['salt', 'black-pepper'],
     tags: ['potato meals'],
@@ -746,6 +803,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Berry Banana Smoothie',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['milk', 'banana', 'strawberry'],
     optionalStaples: ['yogurt', 'honey'],
     tags: ['smoothies', 'breakfast meals'],
@@ -759,6 +817,7 @@ export const sampleRecipes: SampleRecipe[] = [
   },
   {
     title: 'Yogurt Parfait Cup',
+    cuisineStyle: 'Breakfast',
     mainIngredients: ['yogurt', 'oats', 'strawberry'],
     optionalStaples: ['honey', 'banana'],
     tags: ['breakfast bowls', 'breakfast meals'],

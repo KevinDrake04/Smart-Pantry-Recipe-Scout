@@ -1,14 +1,18 @@
-import type { RecipeDef } from '../data/recipeTypes'
+import type { CuisineStyle, RecipeDef } from '../data/recipeTypes'
+import { isCuisineStyle } from '../data/recipeTypes'
 import { curatedRecipes } from '../data/curatedRecipes'
 import { sampleRecipes } from '../data/sampleRecipes'
-
-const recipeCatalog: RecipeDef[] = [...sampleRecipes, ...curatedRecipes]
 import {
   formatIngredientLabel,
   ingredientsById,
   isLowRecipeMatchWeight,
 } from '../data/ingredientKnowledgeBase'
 import type { ParsedIngredient } from './ingredientParser'
+
+/** How many scored suggestions to pass to the UI for search/cuisine filtering (not all catalog recipes). */
+export const RECIPE_SUGGESTION_POOL_SIZE = 48
+
+const recipeCatalog: RecipeDef[] = [...sampleRecipes, ...curatedRecipes]
 
 export type RecipeSuggestion = {
   title: string
@@ -21,6 +25,8 @@ export type RecipeSuggestion = {
   estimatedTime: string
   difficulty: string
   steps: string[]
+  /** Curated cuisine / meal style from recipe data (never blank in normal use). */
+  cuisineStyle: CuisineStyle
 }
 
 /** Fallback staples only used when KB flag missing (legacy ids). */
@@ -83,6 +89,15 @@ function labelsForIds(ids: string[]): string[] {
   return ids.map((id) => formatIngredientLabel(id))
 }
 
+/** Prefer stored RecipeDef.cuisineStyle; coerce invalid or legacy rows to General. */
+function cuisineStyleFromRecipe(recipe: RecipeDef): CuisineStyle {
+  const fromDef = recipe.cuisineStyle?.trim()
+  if (fromDef && isCuisineStyle(fromDef)) return fromDef
+  const legacy = (recipe as { cuisine?: string }).cuisine?.trim()
+  if (legacy && isCuisineStyle(legacy)) return legacy
+  return 'General'
+}
+
 function buildWhyRecommended(
   meaningfulUsedIds: string[],
   urgentIngredientIds: Set<string>
@@ -113,6 +128,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
   if (categories.has('grain') && (categories.has('vegetable') || categories.has('legume'))) {
     fallback.push({
       title: 'Pantry Grain Bowl',
+      cuisineStyle: 'General',
       matchPercentage: 60,
       matchSummary: 'You have a flexible grain + produce / legume base.',
       usedIngredients: labelsForIds(
@@ -144,6 +160,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
   if (ids.has('eggs') && (categories.has('vegetable') || ids.has('spinach'))) {
     fallback.push({
       title: 'Simple Omelet',
+      cuisineStyle: 'Breakfast',
       matchPercentage: 65,
       matchSummary: 'You have the key omelet ingredients.',
       usedIngredients: labelsForIds(
@@ -172,6 +189,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
   if (ids.has('milk') && categories.has('fruit')) {
     fallback.push({
       title: 'Quick Smoothie',
+      cuisineStyle: 'General',
       matchPercentage: 70,
       matchSummary: 'You have milk + fruit for a drinkable snack.',
       usedIngredients: labelsForIds(
@@ -193,6 +211,7 @@ function createFallbackSuggestions(parsedIngredients: ParsedIngredient[]): Recip
   if (ids.has('bread') && ids.has('cheese')) {
     fallback.push({
       title: 'Grilled Cheese',
+      cuisineStyle: 'American',
       matchPercentage: 75,
       matchSummary: 'You already have bread and cheese.',
       usedIngredients: labelsForIds(['bread', 'cheese']),
@@ -229,6 +248,7 @@ function isWeakMatch(
 
 type Scored = {
   title: string
+  cuisineStyle: CuisineStyle
   matchPercentage: number
   matchSummary: string
   usedIngredients: string[]
@@ -247,6 +267,7 @@ type Scored = {
 function toSuggestion(r: Scored): RecipeSuggestion {
   return {
     title: r.title,
+    cuisineStyle: r.cuisineStyle,
     matchPercentage: r.matchPercentage,
     matchSummary: r.matchSummary,
     usedIngredients: r.usedIngredients,
@@ -295,6 +316,7 @@ function scoreRecipe(
 
   return {
     title: recipe.title,
+    cuisineStyle: cuisineStyleFromRecipe(recipe),
     matchPercentage,
     matchSummary:
       meaningfulMains.length > 0
@@ -360,7 +382,9 @@ export function generateRecipeSuggestions(
       return b.matchPercentage - a.matchPercentage
     })
 
-  const topSuggestions = scoredRecipes.slice(0, 6).map(toSuggestion)
+  const topSuggestions = scoredRecipes
+    .slice(0, RECIPE_SUGGESTION_POOL_SIZE)
+    .map(toSuggestion)
 
   if (topSuggestions.length > 0) {
     return topSuggestions
@@ -381,7 +405,7 @@ export function generateRecipeSuggestions(
       }
       return b.meaningfulUsedCount - a.meaningfulUsedCount
     })
-    .slice(0, 6)
+    .slice(0, RECIPE_SUGGESTION_POOL_SIZE)
 
   return loose.map(toSuggestion)
 }

@@ -3,7 +3,7 @@
  * and writes src/data/curatedRecipes.ts (committed). Raw CSV stays gitignored.
  *
  * Usage: npm run curate:recipes
- * Optional env: RECIPE_NLG_CSV=path/to.csv  CURATE_TARGET=1000
+ * Optional env: RECIPE_NLG_CSV=path/to.csv  CURATE_TARGET=10000
  */
 import { createReadStream } from 'fs'
 import { writeFileSync, readdirSync, existsSync } from 'fs'
@@ -15,11 +15,13 @@ import {
   normalizeIngredientPhrase,
   isLowRecipeMatchWeight,
 } from '../src/data/ingredientKnowledgeBase.ts'
+import { inferCuisineStyleFromSignals } from '../src/data/cuisineStyleInference.ts'
+import { CUISINE_STYLES, isCuisineStyle, type CuisineStyle } from '../src/data/recipeTypes.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 
-const TARGET_COUNT = Math.max(1, parseInt(process.env.CURATE_TARGET ?? '1000', 10))
+const TARGET_COUNT = Math.max(1, parseInt(process.env.CURATE_TARGET ?? '10000', 10))
 const RAW_DIR = path.join(ROOT, 'data', 'raw')
 const OUT_FILE = path.join(ROOT, 'src', 'data', 'curatedRecipes.ts')
 
@@ -127,31 +129,6 @@ function normalizeTitleKey(title: string): string {
     .trim()
 }
 
-function inferCuisine(blob: string): string {
-  const s = blob.toLowerCase()
-  const rules: [RegExp, string][] = [
-    [/taco|burrito|enchilada|quesadilla|salsa|tamale/, 'Mexican'],
-    [/pasta|lasagna|ravioli|risotto|parmesan|marinara/, 'Italian'],
-    [/curry|masala|tikka|dal|naan|chapati/, 'Indian'],
-    [/stir[\s-]?fry|dim sum|wonton|szechuan|sichuan/, 'Chinese'],
-    [/miso|sushi|ramen|teriyaki|tempura/, 'Japanese'],
-    [/kimchi|bibimbap|bulgogi|gochujang/, 'Korean'],
-    [/pad thai|tom yum|satay|coconut milk curry/, 'Thai'],
-    [/falafel|tahini|hummus|shawarma|zaatar/, 'Middle Eastern'],
-    [/tzatziki|feta|olive oil.*salad|gyro/, 'Mediterranean'],
-    [/gumbo|jambalaya|cajun|soul food|bbq ribs/, 'American'],
-    [/porridge|pancake|waffle|breakfast burrito|hash browns/, 'Breakfast'],
-    [/soup|chowder|bisque|broth bowl/, 'Soup'],
-    [/salad|coleslaw|greens with/, 'Salad'],
-    [/fried rice|rice bowl|bibimbap bowl/, 'Rice Bowl'],
-    [/spaghetti|linguine|fettuccine|macaroni/, 'Pasta'],
-  ]
-  for (const [re, label] of rules) {
-    if (re.test(s)) return label
-  }
-  return 'General'
-}
-
 function estimateTimeMinutes(directions: string[], title: string): string {
   const blob = [...directions, title].join(' ').toLowerCase()
   const h = blob.match(/(\d+)\s*(?:hours?|hrs?)\b/)
@@ -188,17 +165,17 @@ function estimateDifficulty(
 function synthesizeSteps(
   title: string,
   mains: string[],
-  cuisine: string
+  cuisineStyle: CuisineStyle
 ): string[] {
   const focus = mains.slice(0, 4).join(', ')
   const steps = [
-    `Prep ingredients (${focus || 'as listed'}) for a ${cuisine} style dish.`,
+    `Prep ingredients (${focus || 'as listed'}) for a ${cuisineStyle} style dish.`,
     'Heat oil or butter in a pan, pot, or oven-safe dish as appropriate.',
     'Cook proteins first until safely done, then vegetables until tender-crisp.',
     'Combine sauce elements and simmer briefly to blend flavors.',
     'Season to taste and serve warm.',
   ]
-  if (cuisine === 'Soup' || /soup|stew|chili/i.test(title)) {
+  if (cuisineStyle === 'Soup' || /soup|stew|chili/i.test(title)) {
     return [
       'Chop vegetables and aromatics.',
       'Simmer liquid with aromatics until fragrant.',
@@ -206,14 +183,14 @@ function synthesizeSteps(
       'Adjust seasoning and serve.',
     ]
   }
-  if (cuisine === 'Salad' || /salad/i.test(title)) {
+  if (cuisineStyle === 'Salad' || /salad/i.test(title)) {
     return [
       'Wash and chop produce.',
       'Whisk or shake dressing if needed.',
       'Toss gently and serve chilled.',
     ]
   }
-  if (cuisine === 'Breakfast') {
+  if (cuisineStyle === 'Breakfast') {
     return [
       'Warm skillet or griddle.',
       'Cook eggs or grains until set.',
@@ -228,10 +205,19 @@ type CuratedRow = {
   mainIngredients: string[]
   optionalStaples: string[]
   optionalIngredients: string[]
-  cuisine: string
+  cuisineStyle: CuisineStyle
   estimatedTime: string
   difficulty: 'Easy' | 'Medium' | 'Hard'
   steps: string[]
+}
+
+function validateCollected(rows: CuratedRow[]): void {
+  for (let i = 0; i < rows.length; i++) {
+    const cs = rows[i].cuisineStyle
+    if (!isCuisineStyle(cs)) {
+      throw new Error(`Invalid cuisineStyle at row ${i}: ${String(cs)}`)
+    }
+  }
 }
 
 function splitMainVsStaple(ids: string[]): {
@@ -326,11 +312,15 @@ async function run(): Promise<void> {
 
           if (!acceptableRecipe(mains, staples)) return
 
-          const blob = `${title} ${ingredientLines.join(' ')}`
-          const cuisine = inferCuisine(blob)
+          const cuisineStyle = inferCuisineStyleFromSignals(
+            title,
+            mains,
+            ingredientLines,
+            directions
+          )
           const time = estimateTimeMinutes(directions, title)
           const difficulty = estimateDifficulty(mains.length, directions, title)
-          const steps = synthesizeSteps(title, mains, cuisine)
+          const steps = synthesizeSteps(title, mains, cuisineStyle)
 
           seenKeys.add(key)
           collected.push({
@@ -338,7 +328,7 @@ async function run(): Promise<void> {
             mainIngredients: mains,
             optionalStaples: staples,
             optionalIngredients: [],
-            cuisine,
+            cuisineStyle,
             estimatedTime: time,
             difficulty,
             steps,
@@ -356,12 +346,29 @@ async function run(): Promise<void> {
     readStream.on('error', reject)
   })
 
+  validateCollected(collected)
+
+  const counts = new Map<CuisineStyle, number>()
+  for (const s of CUISINE_STYLES) counts.set(s, 0)
+  for (const row of collected) {
+    counts.set(row.cuisineStyle, (counts.get(row.cuisineStyle) ?? 0) + 1)
+  }
+  console.log('Cuisine / style counts:')
+  for (const s of CUISINE_STYLES) {
+    console.log(`  ${s}: ${counts.get(s) ?? 0}`)
+  }
+
   const header = `/**
  * Curated recipes derived from a public RecipeNLG-style dataset.
  * Normalized to canonical ingredient ids from ingredientKnowledgeBase.ts for this class project.
  * Original long directions were not copied verbatim — short generic steps were synthesized.
+ *
+ * cuisineStyle is inferred deterministically from title, ingredient text, and direction signals
+ * (see scripts/curateRecipeDataset.ts and src/data/cuisineStyleInference.ts). Labels use the shared
+ * CUISINE_STYLES list — prefer "General" when signals conflict or are weak.
+ *
  * The raw dataset lives under data/raw/ and is gitignored (not committed).
- * Regenerate: npm run curate:recipes
+ * Regenerate: npm run curate:recipes  (optional: CURATE_TARGET=10000)
  */
 
 import type { RecipeDef } from './recipeTypes'
