@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "curate:recipes": "tsx scripts/curateRecipeDataset.ts"
+    "curate:recipes": "tsx scripts/curateRecipeDataset.ts",
+    "audit:recipes": "tsx scripts/auditRecipeCatalog.ts"
   },
   "dependencies": {
     "@heroui/react": "^3.0.3",

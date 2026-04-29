@@ -3,7 +3,7 @@
  * and writes src/data/curatedRecipes.ts (committed). Raw CSV stays gitignored.
  *
  * Usage: npm run curate:recipes
- * Optional env: RECIPE_NLG_CSV=path/to.csv  CURATE_TARGET=10000
+ * Optional env: RECIPE_NLG_CSV=path/to.csv  CURATE_TARGET=50000
  */
 import { createReadStream } from 'fs'
 import { writeFileSync, readdirSync, existsSync } from 'fs'
@@ -21,7 +21,9 @@ import { CUISINE_STYLES, isCuisineStyle, type CuisineStyle } from '../src/data/r
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 
-const TARGET_COUNT = Math.max(1, parseInt(process.env.CURATE_TARGET ?? '10000', 10))
+const TARGET_COUNT = Math.max(1, parseInt(process.env.CURATE_TARGET ?? '50000', 10))
+const MAX_SCAN_ROWS = Math.max(TARGET_COUNT * 8, 250000)
+const MAX_CANDIDATES = Math.max(TARGET_COUNT * 3, 150000)
 const RAW_DIR = path.join(ROOT, 'data', 'raw')
 const OUT_FILE = path.join(ROOT, 'src', 'data', 'curatedRecipes.ts')
 
@@ -71,19 +73,62 @@ function stripQuantityPrefix(line: string): string {
   return s.trim()
 }
 
+const PREP_WORDS = [
+  'chopped',
+  'diced',
+  'sliced',
+  'cooked',
+  'shredded',
+  'boneless',
+  'skinless',
+  'fresh',
+  'frozen',
+  'canned',
+  'drained',
+  'rinsed',
+  'large',
+  'small',
+  'medium',
+  'optional',
+  'minced',
+  'crushed',
+  'peeled',
+]
+
+function normalizeIngredientForResolution(text: string): string {
+  let s = text.toLowerCase()
+  s = s.replace(/\([^)]*\)/g, ' ')
+  s = s.replace(/\[[^\]]*\]/g, ' ')
+  s = s.replace(/[/|]/g, ' ')
+  s = s.replace(/[_-]/g, ' ')
+  s = s.replace(/[^a-z0-9\s]/g, ' ')
+  for (const w of PREP_WORDS) {
+    const re = new RegExp(`\\b${w}\\b`, 'g')
+    s = s.replace(re, ' ')
+  }
+  s = s.replace(/\s+/g, ' ').trim()
+  return normalizeIngredientPhrase(s)
+}
+
 function candidateStrings(raw: string): string[] {
   const out = new Set<string>()
   const base = raw.trim()
   if (!base) return []
-  out.add(normalizeIngredientPhrase(base))
-  const stripped = normalizeIngredientPhrase(stripQuantityPrefix(base))
+  out.add(normalizeIngredientForResolution(base))
+  const stripped = normalizeIngredientForResolution(stripQuantityPrefix(base))
   if (stripped) out.add(stripped)
-  const commaParts = base.split(',').map((p) => normalizeIngredientPhrase(p.trim()))
+  const commaParts = base.split(',').map((p) => normalizeIngredientForResolution(p.trim()))
   commaParts.forEach((p) => {
     if (p.length >= 2) out.add(p)
-    const st = normalizeIngredientPhrase(stripQuantityPrefix(p))
+    const st = normalizeIngredientForResolution(stripQuantityPrefix(p))
     if (st.length >= 2) out.add(st)
   })
+  const noPercent = stripped.replace(/\b\d+(\.\d+)?\s*%\b/g, '').trim()
+  if (noPercent) out.add(noPercent)
+  const noPrepTail = stripped
+    .replace(/\b(halves|chunks|pieces|strips|tenders|breast|breasts|thigh|thighs)\b$/g, '')
+    .trim()
+  if (noPrepTail) out.add(noPrepTail)
   const words = stripped.split(/\s+/).filter(Boolean)
   if (words.length > 3) {
     out.add(words.slice(-3).join(' '))
@@ -211,6 +256,38 @@ type CuratedRow = {
   steps: string[]
 }
 
+type CandidateRecipe = CuratedRow & {
+  titleKey: string
+}
+
+const PRIORITY_INGREDIENT_IDS = [
+  'chicken',
+  'ground beef',
+  'tofu',
+  'tuna',
+  'eggs',
+  'rice',
+  'pasta',
+  'noodles',
+  'bread',
+  'tortilla',
+  'potatoes',
+  'tomatoes',
+  'cheese',
+  'beans',
+  'black beans',
+  'chickpeas',
+  'lentils',
+  'peanut butter',
+  'milk',
+  'yogurt',
+  'broccoli',
+  'spinach',
+  'bell-peppers',
+] as const
+
+const PRIORITY_TARGET_MIN = 100
+
 function validateCollected(rows: CuratedRow[]): void {
   for (let i = 0; i < rows.length; i++) {
     const cs = rows[i].cuisineStyle
@@ -218,6 +295,106 @@ function validateCollected(rows: CuratedRow[]): void {
       throw new Error(`Invalid cuisineStyle at row ${i}: ${String(cs)}`)
     }
   }
+}
+
+function chooseBalancedSubset(candidates: CandidateRecipe[], target: number): CuratedRow[] {
+  if (candidates.length <= target) {
+    return candidates.map((c) => {
+      const row: CuratedRow = {
+        title: c.title,
+        mainIngredients: c.mainIngredients,
+        optionalStaples: c.optionalStaples,
+        optionalIngredients: c.optionalIngredients,
+        cuisineStyle: c.cuisineStyle,
+        estimatedTime: c.estimatedTime,
+        difficulty: c.difficulty,
+        steps: c.steps,
+      }
+      return row
+    })
+  }
+
+  const selectedIdx = new Set<number>()
+  const selectedTitleKeys = new Set<string>()
+  const selectedPriorityCounts = new Map<string, number>()
+  for (const id of PRIORITY_INGREDIENT_IDS) selectedPriorityCounts.set(id, 0)
+
+  const indicesByPriority = new Map<string, number[]>()
+  for (const id of PRIORITY_INGREDIENT_IDS) indicesByPriority.set(id, [])
+  for (let i = 0; i < candidates.length; i++) {
+    const set = new Set(candidates[i].mainIngredients)
+    for (const id of PRIORITY_INGREDIENT_IDS) {
+      if (set.has(id)) indicesByPriority.get(id)!.push(i)
+    }
+  }
+
+  const addCandidate = (idx: number): boolean => {
+    if (selectedIdx.size >= target) return false
+    if (selectedIdx.has(idx)) return false
+    const c = candidates[idx]
+    if (selectedTitleKeys.has(c.titleKey)) return false
+    selectedIdx.add(idx)
+    selectedTitleKeys.add(c.titleKey)
+    const set = new Set(c.mainIngredients)
+    for (const id of PRIORITY_INGREDIENT_IDS) {
+      if (set.has(id)) {
+        selectedPriorityCounts.set(id, (selectedPriorityCounts.get(id) ?? 0) + 1)
+      }
+    }
+    return true
+  }
+
+  for (const id of PRIORITY_INGREDIENT_IDS) {
+    const idxs = indicesByPriority.get(id) ?? []
+    for (const idx of idxs) {
+      if ((selectedPriorityCounts.get(id) ?? 0) >= PRIORITY_TARGET_MIN) break
+      addCandidate(idx)
+      if (selectedIdx.size >= target) break
+    }
+    if (selectedIdx.size >= target) break
+  }
+
+  if (selectedIdx.size < target) {
+    const availability = new Map<string, number>()
+    for (const id of PRIORITY_INGREDIENT_IDS) {
+      availability.set(id, (indicesByPriority.get(id) ?? []).length)
+    }
+
+    const scored = candidates.map((c, idx) => {
+      const mains = new Set(c.mainIngredients)
+      let score = c.mainIngredients.length * 0.05
+      for (const id of PRIORITY_INGREDIENT_IDS) {
+        if (!mains.has(id)) continue
+        const have = selectedPriorityCounts.get(id) ?? 0
+        const cap = Math.max(PRIORITY_TARGET_MIN, availability.get(id) ?? PRIORITY_TARGET_MIN)
+        score += have < PRIORITY_TARGET_MIN ? 20 + (PRIORITY_TARGET_MIN - have) * 0.25 : 2
+        score += 5 / Math.max(1, cap)
+      }
+      return { idx, score }
+    })
+    scored.sort((a, b) => b.score - a.score)
+
+    for (const s of scored) {
+      if (selectedIdx.size >= target) break
+      addCandidate(s.idx)
+    }
+  }
+
+  const out: CuratedRow[] = []
+  for (const idx of selectedIdx) {
+    const c = candidates[idx]
+    out.push({
+      title: c.title,
+      mainIngredients: c.mainIngredients,
+      optionalStaples: c.optionalStaples,
+      optionalIngredients: c.optionalIngredients,
+      cuisineStyle: c.cuisineStyle,
+      estimatedTime: c.estimatedTime,
+      difficulty: c.difficulty,
+      steps: c.steps,
+    })
+  }
+  return out.slice(0, target)
 }
 
 function splitMainVsStaple(ids: string[]): {
@@ -250,7 +427,7 @@ async function run(): Promise<void> {
   console.log('Reading (streaming):', csvPath)
   console.log('Target curated recipes:', TARGET_COUNT)
 
-  const collected: CuratedRow[] = []
+  const candidates: CandidateRecipe[] = []
   const seenKeys = new Set<string>()
   let rowsSeen = 0
 
@@ -270,11 +447,14 @@ async function run(): Promise<void> {
     parser
       .on('data', (row: Record<string, string>) => {
         if (settled) return
-        if (collected.length >= TARGET_COUNT) {
+        rowsSeen++
+        if (rowsSeen % 50000 === 0) {
+          console.log(`Scanned rows: ${rowsSeen} | candidates: ${candidates.length}`)
+        }
+        if (rowsSeen >= MAX_SCAN_ROWS || candidates.length >= MAX_CANDIDATES) {
           safeResolve()
           return
         }
-        rowsSeen++
         try {
           const title = (row.title ?? row.Title ?? '').trim()
           if (!title || title.length < 4 || title.length > 120) return
@@ -323,8 +503,9 @@ async function run(): Promise<void> {
           const steps = synthesizeSteps(title, mains, cuisineStyle)
 
           seenKeys.add(key)
-          collected.push({
+          candidates.push({
             title,
+            titleKey: key,
             mainIngredients: mains,
             optionalStaples: staples,
             optionalIngredients: [],
@@ -333,9 +514,6 @@ async function run(): Promise<void> {
             difficulty,
             steps,
           })
-          if (collected.length >= TARGET_COUNT) {
-            safeResolve()
-          }
         } catch {
           /* skip bad row */
         }
@@ -346,6 +524,14 @@ async function run(): Promise<void> {
     readStream.on('error', reject)
   })
 
+  if (rowsSeen >= MAX_SCAN_ROWS) {
+    console.warn(`Stopped scan at MAX_SCAN_ROWS=${MAX_SCAN_ROWS} for runtime control.`)
+  }
+  if (candidates.length >= MAX_CANDIDATES) {
+    console.warn(`Stopped after collecting MAX_CANDIDATES=${MAX_CANDIDATES}.`)
+  }
+
+  const collected = chooseBalancedSubset(candidates, TARGET_COUNT)
   validateCollected(collected)
 
   const counts = new Map<CuisineStyle, number>()
@@ -358,6 +544,28 @@ async function run(): Promise<void> {
     console.log(`  ${s}: ${counts.get(s) ?? 0}`)
   }
 
+  const priorityCounts = new Map<string, number>()
+  for (const id of PRIORITY_INGREDIENT_IDS) priorityCounts.set(id, 0)
+  for (const row of collected) {
+    const mains = new Set(row.mainIngredients)
+    for (const id of PRIORITY_INGREDIENT_IDS) {
+      if (mains.has(id)) {
+        priorityCounts.set(id, (priorityCounts.get(id) ?? 0) + 1)
+      }
+    }
+  }
+  console.log('Priority ingredient coverage (mainIngredients):')
+  for (const id of PRIORITY_INGREDIENT_IDS) {
+    const n = priorityCounts.get(id) ?? 0
+    console.log(`  ${id}: ${n}`)
+    if (n < PRIORITY_TARGET_MIN) {
+      const avail = candidates.filter((c) => c.mainIngredients.includes(id)).length
+      console.warn(
+        `  Warning: ${id} below target (${n}/${PRIORITY_TARGET_MIN}). Candidate availability: ${avail}.`
+      )
+    }
+  }
+
   const header = `/**
  * Curated recipes derived from a public RecipeNLG-style dataset.
  * Normalized to canonical ingredient ids from ingredientKnowledgeBase.ts for this class project.
@@ -368,17 +576,18 @@ async function run(): Promise<void> {
  * CUISINE_STYLES list — prefer "General" when signals conflict or are weak.
  *
  * The raw dataset lives under data/raw/ and is gitignored (not committed).
- * Regenerate: npm run curate:recipes  (optional: CURATE_TARGET=10000)
+ * Regenerate: npm run curate:recipes  (optional: CURATE_TARGET=50000)
  */
-
-import type { RecipeDef } from './recipeTypes'
 
 `
 
-  const body = `export const curatedRecipes: RecipeDef[] = ${JSON.stringify(collected, null, 2)}\n`
+  /** Embed as JSON.parse(...) so TypeScript does not infer an enormous literal union (TS2590). */
+  const innerJson = JSON.stringify(collected)
+  const body = `export const curatedRecipes = JSON.parse(${JSON.stringify(innerJson)}) as import('./recipeTypes').RecipeDef[]\n`
   writeFileSync(OUT_FILE, header + body, 'utf8')
 
   console.log('Rows scanned:', rowsSeen)
+  console.log('Candidate recipes after filtering:', candidates.length)
   console.log('Curated recipes written:', collected.length, '→', path.relative(ROOT, OUT_FILE))
   if (collected.length < TARGET_COUNT) {
     console.warn(

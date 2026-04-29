@@ -7,6 +7,7 @@ import {
   type IngredientRecord,
 } from '../data/ingredientKnowledgeBase'
 import { parseIngredients } from '../services/ingredientParser'
+import { QUICK_ADD_SUPPORTED_INGREDIENT_IDS } from '../utils/quickAddIngredientIds'
 import { togglePantryIngredient } from '../utils/pantryIngredientText'
 
 const CATEGORY_ORDER: IngredientCategory[] = [
@@ -55,8 +56,9 @@ export default function IngredientPicker({ value, onChange }: IngredientPickerPr
   const filteredByCategory = useMemo(() => {
     const map = new Map<IngredientCategory, IngredientRecord[]>()
     for (const cat of CATEGORY_ORDER) map.set(cat, [])
-    /** Every KB row is listed once; unknown categories fall back to “other”. */
+    /** Recipe-catalog ids only; KB rows unchanged elsewhere. */
     for (const ing of INGREDIENT_KNOWLEDGE_BASE) {
+      if (!QUICK_ADD_SUPPORTED_INGREDIENT_IDS.has(ing.id)) continue
       if (!ingredientMatchesQuery(ing, filter)) continue
       const bucket: IngredientCategory = map.has(ing.category) ? ing.category : 'other'
       map.get(bucket)?.push(ing)
@@ -82,6 +84,10 @@ export default function IngredientPicker({ value, onChange }: IngredientPickerPr
         </h3>
         <p className="text-xs leading-snug text-slate-500">
           Click ingredients to add or remove them from your pantry.
+        </p>
+        <p className="text-[11px] leading-snug text-slate-400">
+          Showing ingredients that are useful as main recipe matches. You can still type spices,
+          sauces, or pantry staples manually.
         </p>
       </div>
       <div className="mt-2 space-y-2">
