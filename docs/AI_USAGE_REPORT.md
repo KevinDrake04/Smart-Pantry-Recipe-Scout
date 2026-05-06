@@ -39,15 +39,18 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 
 - **Initial project planning** and feature breakdowns aligned to assignment constraints.
 - **React / Vite** file structure and TypeScript typings for services and data shapes.
-- **GitFlow-style** reminders (feature branches, small commits)—I made the actual Git decisions.
+- **GitFlow workflow** reminders (feature branches, develop/main integration, small reviewable changes)—I made the actual branching and merge decisions.
 - **UI/UX** iterations using **HeroUI** and layout patterns (cards, tabs, pantry vs results).
 - **Ingredient knowledge base** structure (IDs, aliases, metadata fields).
 - **RecipeNLG curation script** skeleton: CSV streaming, normalization hooks, writing `curatedRecipes.ts`.
 - **Dataset filtering** and **canonical ingredient matching** ideas (edge cases still required manual tuning).
 - **Cuisine/style inference** rule ordering and consolidation into shared modules.
+- **Quick Add filtering** — eligibility rules tied to recipe-catalog usage so staples/condiments stay typable but are hidden from one-click Quick Add.
+- **Dataset audit script** (`scripts/auditRecipeCatalog.ts`) — ideas for reporting step sources, URL coverage, and simple quality checks.
 - **Debugging** hints for filter/dropdown/search interactions.
 - **Waste tips** structure and copy drafts.
 - **Pagination** state and derived-list patterns (I verified ESLint rules and reset behavior).
+- **Match threshold (“Min match”)** UI and filtering (segmented percentage buttons tied to the ranked suggestion list).
 - **Documentation** first drafts for README and reports.
 
 ---
@@ -131,4 +134,4 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 
 ## Honesty Statement
 
-AI tools generated **drafts and code suggestions**. I **reviewed, edited, tested, and refined prompts**, fixed **UX and logic issues**, and verified behavior through **lint, build, and manual testing**. The app **does not use a backend database**, **does not use real image recognition** (simulated fridge uses **sample ingredient sets**), and relies on **local TypeScript data** plus optional **localStorage** for the pantry textarea. **Cuisine/style** is **inferred with deterministic rules** from titles and text during curation and is **broad, not perfect**. **Recipe steps** come from cleaned RecipeNLG `directions` when usable, otherwise the app shows generated fallback “Suggested steps”.
+AI tools generated **drafts and code suggestions**. I **reviewed, edited, tested, and refined prompts**, fixed **UX and logic issues**, and verified behavior through **lint, build, and manual testing**. The app **does not use a backend database**, **does not use real image recognition** (simulated fridge uses **sample ingredient sets**), **does not call external recipe APIs at runtime**, and relies on **local TypeScript data** plus optional **localStorage** for the pantry textarea. **Cuisine/style** is **inferred with deterministic rules** from titles and text during curation and is **broad, not perfect**. **Recipe steps** come from cleaned RecipeNLG `directions` when usable, otherwise the app shows generated fallback “Suggested steps”. **Original RecipeNLG source links are not guaranteed to work**; known bad domains are filtered during curation.
