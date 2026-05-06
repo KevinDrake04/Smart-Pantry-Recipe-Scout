@@ -2,6 +2,9 @@
 
 **Smart Pantry & Recipe Scout** is a frontend-only React + TypeScript + Vite application that helps users discover recipes from ingredients they already have. It combines manual ingredient entry, simulated fridge presets, quick-add chips from a local knowledge base, fuzzy parsing with canonical normalization, ranked recipe suggestions (with search, cuisine/style filtering, and pagination), and food waste reduction tips—all in the browser with **no backend** and **no runtime calls to external APIs**.
 
+- **Live app:** [smart-pantry-recipe-scout on Vercel](https://smart-pantry-recipe-scout-pt2me29mp-kevindrake04s-projects.vercel.app)
+- **Source code:** [github.com/KevinDrake04/smart-pantry-recipe-scout](https://github.com/KevinDrake04/smart-pantry-recipe-scout)
+
 ---
 
 ## Features
@@ -12,6 +15,7 @@
 - **Local ingredient knowledge base** — Canonical IDs, aliases (plurals, singulars, typos, multi-word foods), category and perishability metadata, storage tips, use ideas, and substitutions.
 - **Alias examples** — e.g. `tomatos` → tomatoes, `cheeze` → cheese, `eggg` → eggs; **“black pepper”** resolves to pepper, not bell peppers; **“peanut butter”** stays a distinct ingredient from butter.
 - **Recipe recommendations** — Ranked by match quality against curated + sample recipes; shows used vs missing mains, match percentage, substitutions, and short reasons.
+- **Recipe steps** — When RecipeNLG `directions` clean up to valid steps, cards show **Recipe steps**; otherwise the app uses concise generated templates labeled **Suggested steps**.
 - **RecipeNLG-based curation** — Script streams a RecipeNLG-style CSV, resolves ingredients through the knowledge base, infers cuisine/style, and emits `src/data/curatedRecipes.ts` (default target **50,000** when `CURATE_TARGET=50000`). The pipeline uses `worker_threads` for CPU-heavy work and includes local caching to keep it fast.
 - **Cuisine / style** — Strict allowed list on the TypeScript side; labels assigned at curation time via deterministic rules (broad, conservative; uncertain → General).
 - **Recipe search** — Filter suggestions by recipe title.
@@ -47,8 +51,9 @@ smart-pantry-recipe-scout/
 │   └── AI_USAGE_REPORT.md
 ├── public/
 ├── scripts/
-│   ├── curateRecipeDataset.ts   # Streams CSV → curatedRecipes.ts (main thread)
-│   └── curateRecipeDataset.worker.ts   # worker_threads batch processor
+│   ├── curateRecipeDataset.ts        # Streams CSV → curatedRecipes.ts (main thread)
+│   ├── curateRecipeDataset.worker.ts # worker_threads batch processor
+│   └── auditRecipeCatalog.ts         # Console audit of curatedRecipes.ts quality/coverage
 ├── src/
 │   ├── App.tsx                # Main UI: pantry setup, results tabs, filters, pagination
 │   ├── components/            # IngredientInput, IngredientPicker, SimulatedImageInput, …

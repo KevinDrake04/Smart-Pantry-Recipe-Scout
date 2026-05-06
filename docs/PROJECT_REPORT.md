@@ -92,7 +92,7 @@ recipeSuggestionFilters (search + cuisine) → pagination slice → UI
 |--------|------|
 | `ingredientKnowledgeBase.ts` | Canonical IDs, aliases, categories, perishability, tips, substitutions |
 | `sampleRecipes.ts` | Hand-authored examples for demos and edge cases |
-| `curatedRecipes.ts` | Large NLG-derived set (e.g. ~10k rows when generated with `CURATE_TARGET=10000`) |
+| `curatedRecipes.ts` | Large NLG-derived set (on the order of **~50,000** recipes when generated with `CURATE_TARGET=50000`, subject to raw CSV size and curation filters) |
 | `recipeTypes.ts` | `RecipeDef`, strict **`CUISINE_STYLES`** list, `CuisineStyle` type |
 | `cuisineStyleInference.ts` | Shared deterministic rules used by the curation script |
 
@@ -102,7 +102,7 @@ recipeSuggestionFilters (search + cuisine) → pagination slice → UI
 
 ## Ingredient Knowledge Base
 
-- **Canonical IDs** (e.g. `black-pepper`, `peanut butter`) keep matching stable across typos and wording.
+- **Canonical IDs** (e.g. `black-pepper`, `peanut-butter`) keep matching stable across typos and wording.
 - **Aliases** map plurals, singulars, common typos, and multi-word foods so user text collapses to one ID per phrase where possible.
 - **Category** supports grouping in Quick Add and downstream logic.
 - **Perishability**, **storage tips**, **use ideas**, and **substitutions** feed waste tips and substitution lines.
@@ -231,9 +231,10 @@ Instead of listing every knowledge-base entry, it uses recipe-catalog support si
 
 - **No backend database**; all static data is bundled; localStorage is browser-local only.
 - **No real image recognition**; simulated fridge uses sample lists only.
-- **Cuisine/style** is **rule-based** and **approximate**.
+- **Large curated dataset** — Committing tens of thousands of recipes in `curatedRecipes.ts` **increases frontend bundle size** and can affect dev/build times compared to a tiny demo set.
+- **Cuisine/style** is **rule-based** and **approximate**; it is **not** perfect culinary classification.
 - **Recipe steps** come from cleaned dataset directions when usable; otherwise the app uses generated fallback templates (“Suggested steps”).
-- **Stale RecipeNLG source URLs** may be blocked; the UI shows “View source” only when `sourceUrl` is valid and not in the unavailable domain blocklist.
+- **Stale RecipeNLG source URLs** — Not every original publisher link remains valid; known broken/unavailable domains are filtered at curation time, and the UI shows “View source” only when a valid, non-blocked `sourceUrl` exists.
 - **Knowledge base** cannot cover every ingredient worldwide.
 
 ---
@@ -253,8 +254,9 @@ Manual verification regularly covers:
 
 - Representative pantry strings (including typos and urgency).
 - Simulated fridge presets and Quick Add searches (`peanut butter`, `black pepper`, `bell peppers`).
-- **Find Recipes**, **search**, **cuisine filter**, **pagination** (page changes, filter resets).
+- **Find Recipes**, **search**, **cuisine filter**, **min match** threshold, and **pagination** (page changes, filter resets).
 - **Build**: `npm run build`; **lint**: `npm run lint`.
 - **Curation** (when raw CSV available): `npm run curate:recipes` with expected row counts and console histogram.
+- **Audit**: `npm run audit:recipes` for step/source coverage and basic quality stats on `curatedRecipes.ts`.
 
 Automated test suites are a documented future improvement rather than a current requirement.
