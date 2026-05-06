@@ -192,7 +192,7 @@ Instead of listing every knowledge-base entry, it uses recipe-catalog support si
 - Users accept **comma-oriented** text entry and occasional parser ambiguity on exotic phrases.
 - **Course / MVP scope** stays frontend-only unless explicitly expanded.
 - **Cuisine labels** are informative, not authoritative culinary taxonomy.
-- **Recipe steps** are teaching/demo-friendly. When curated dataset `directions` are usable, the app uses cleaned dataset steps; otherwise it uses generated fallback templates.
+- **Recipe steps** are meant to be useful for this project demo, but they may not be as complete as a full cooking website. When curated dataset `directions` are usable, the app uses cleaned dataset steps; otherwise it uses generated fallback templates.
 
 ---
 

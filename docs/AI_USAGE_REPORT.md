@@ -5,7 +5,7 @@
 - **Cursor AI** — Primary assistant for code scaffolding, refactors, and in-editor iteration.
 - **ChatGPT** — Brainstorming, drafting explanations, and second opinions on design tradeoffs.
 
-This report reflects **honest** collaboration: AI produced drafts and suggestions; **I reviewed, edited, tested, and accepted responsibility** for what shipped.
+I used AI tools as helpers, not as the author of this project. They produced drafts and suggestions; **I** read the changes, fixed what was wrong, tested in the browser and with build/lint, and made the final calls about what to keep.
 
 ---
 
@@ -16,7 +16,7 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 3. **Review** — Read diffs for correctness, scope creep, and requirement mismatches.
 4. **Run** — Execute `npm run dev`, `npm run build`, `npm run lint`, and manual browser checks.
 5. **Iterate** — Refine prompts when output was wrong; fix edge cases by hand.
-6. **Document** — Use AI to draft README/report text, then edit for accuracy and course voice.
+6. **Document** — Use AI to draft README/report text, then edit it so it matches **what I actually built** and **how I would explain it** to someone else.
 
 ---
 
@@ -134,4 +134,6 @@ This report reflects **honest** collaboration: AI produced drafts and suggestion
 
 ## Honesty Statement
 
-AI tools generated **drafts and code suggestions**. I **reviewed, edited, tested, and refined prompts**, fixed **UX and logic issues**, and verified behavior through **lint, build, and manual testing**. The app **does not use a backend database**, **does not use real image recognition** (simulated fridge uses **sample ingredient sets**), **does not call external recipe APIs at runtime**, and relies on **local TypeScript data** plus optional **localStorage** for the pantry textarea. **Cuisine/style** is **inferred with deterministic rules** from titles and text during curation and is **broad, not perfect**. **Recipe steps** come from cleaned RecipeNLG `directions` when usable, otherwise the app shows generated fallback “Suggested steps”. **Original RecipeNLG source links are not guaranteed to work**; known bad domains are filtered during curation.
+AI tools helped me by generating drafts and code suggestions. I still had to **review everything**, **change a lot of it**, **re-run prompts** when the output was off, and **fix UX and logic bugs** myself. I checked the app with **lint**, **build**, and **manual testing** before considering anything done.
+
+The finished app **does not use a backend database**. It **does not use real image recognition**—the simulated fridge just loads **sample ingredient sets**. It **does not call external recipe APIs at runtime**; matching runs on **local TypeScript data**, and the pantry textarea can be saved in **localStorage** only on your machine. **Cuisine/style** comes from **deterministic rules** applied during curation, so labels are **rough** and **not perfect**. **Recipe steps** use cleaned RecipeNLG `directions` when those steps are usable; otherwise the UI shows shorter generated **“Suggested steps.”** **Original RecipeNLG source links are not all reliable**; I filter known bad domains during curation so the UI does not advertise dead links.

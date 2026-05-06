@@ -13,7 +13,7 @@
 - **Simulated fridge image input** — Loads sample “detected” ingredient sets into the textarea (not real image recognition).
 - **Quick Add Ingredients** — Compact category browsing over the local ingredient knowledge base. Quick Add intentionally hides many “pantry-only” items (e.g. salt, most oils, and many seasonings/spices) so one-click selections usually generate useful recipe matches. Manual typing still supports the full knowledge base.
 - **Local ingredient knowledge base** — Canonical IDs, aliases (plurals, singulars, typos, multi-word foods), category and perishability metadata, storage tips, use ideas, and substitutions.
-- **Alias examples** — e.g. `tomatos` → tomatoes, `cheeze` → cheese, `eggg` → eggs; **“black pepper”** resolves to pepper, not bell peppers; **“peanut butter”** stays a distinct ingredient from butter.
+- **Alias examples** — e.g. `tomatos` → tomatoes, `cheeze` → cheese, `eggg` → eggs; **“black pepper”** is treated as a seasoning and is not confused with bell peppers; **“peanut butter”** stays a distinct ingredient from butter.
 - **Recipe recommendations** — Ranked by match quality against curated + sample recipes; shows used vs missing mains, match percentage, substitutions, and short reasons.
 - **Recipe steps** — When RecipeNLG `directions` clean up to valid steps, cards show **Recipe steps**; otherwise the app uses concise generated templates labeled **Suggested steps**.
 - **RecipeNLG-based curation** — Script streams a RecipeNLG-style CSV, resolves ingredients through the knowledge base, infers cuisine/style, and emits `src/data/curatedRecipes.ts` (default target **50,000** when `CURATE_TARGET=50000`). The pipeline uses `worker_threads` for CPU-heavy work and includes local caching to keep it fast.
@@ -146,7 +146,7 @@ Full curation:
 $env:CURATE_TARGET="50000"; $env:CURATE_WORKERS="12"; $env:CURATE_BATCH_SIZE="2500"; npm run curate:recipes
 ```
 
-This writes **`src/data/curatedRecipes.ts`**. Commit that file if your course workflow expects it; the **raw CSV stays out of Git**.
+This writes **`src/data/curatedRecipes.ts`**. The generated `src/data/curatedRecipes.ts` file is committed with this project, but the **raw CSV stays out of Git**.
 
 ---
 ## How to Audit Curated Recipes
@@ -203,7 +203,7 @@ Also try **Simulated Fridge Image Input** presets (e.g. weeknight leftovers, bre
 - Search and toggle `eggs` (should appear)
 - Search and toggle `chicken` (should appear)
 - Search `soy sauce` (should *not* appear in Quick Add; typing it manually should still parse)
-- Search `black pepper` (should *not* appear in Quick Add; typing it manually should still parse and should not map to bell peppers)
+- Search `black pepper` (should *not* appear in Quick Add; typing it manually should still parse, and black pepper should not be confused with bell peppers)
 - Search `salt` and common oils (should *not* appear in Quick Add)
 
 ---
